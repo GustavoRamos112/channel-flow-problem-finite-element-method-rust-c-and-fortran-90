@@ -1,9 +1,11 @@
 
 #include <iostream>
 #include <array>
+#include <span>
 #include <print>
 #include <format>
 #include <chrono>
+#include <cmath>
 
 //******************************************************
 //? Constantes
@@ -32,7 +34,7 @@ void setgrd(
     std::array<std::array<int, 2>, np> &indx,
     std::array<int, np> &insc,
     std::array<int, nelemn> &isotri,
-    int &iwrite, bool &_long,
+    int &iwrite, bool &_long, int &neqn,
     std::array<std::array<int, nnodes>, nelemn> &node
 );
 
@@ -65,6 +67,129 @@ void setxy(
   std::array<double, np> &yc,
   double &ylngth
 );
+
+//******************************************************
+void setqud(
+  std::array<double, nelemn> &area,
+  std::array<std::array<int, nnodes>, nelemn> &node,
+  std::array<double, np> &xc,
+  std::array<std::array<double, nquad>, nelemn> &xm,
+  std::array<double, np> &yc,
+  std::array<std::array<double, nquad>, nelemn> &ym
+);
+
+//******************************************************
+void setbas(
+  std::array<std::array<int, nnodes>, nelemn> &node,
+  std::array<double, np> &xc,
+  std::array<double, np> &yc,
+  std::array<std::array<std::array<std::array<double, 3>, nnodes>, nquad>, nelemn> &phi,
+  std::array<std::array<std::array<double, nnodes>, nquad>, nelemn> &psi,
+  std::array<std::array<double, nquad>, nelemn> &xm,
+  std::array<std::array<double, nquad>, nelemn> &ym
+);
+
+//******************************************************
+double bsp(
+  double xq,
+  double yq,
+  int it,
+  int iq,
+  int id,
+  const std::array<std::array<int, nnodes>, nelemn> &node,
+  const std::array<double, np> &xc,
+  const std::array<double, np> &yc
+);
+
+//******************************************************
+void qbf(
+  double x,
+  double y,
+  int it,
+  int in,
+  double &bb,
+  double &bx,
+  double &by,
+  const std::array<std::array<int, nnodes>, nelemn> &node,
+  const std::array<double, np> &xc,
+  const std::array<double, np> &yc
+);
+
+//******************************************************
+void nstoke(
+  std::array<std::array<double, maxeqn>, maxrow> &a,
+  std::array<double, nelemn> &area,
+  std::array<double, maxeqn> &f,
+  std::array<double, maxeqn> &g,
+  std::array<std::array<int, 2>, np> &indx,
+  std::array<int, np> &insc,
+  std::array<int, maxeqn> &ipivot,
+  int iwrite,
+  int &maxnew,
+  int neqn, int nlband,
+  std::array<std::array<int, nnodes>, nelemn> &node,
+  int &nrow,
+  int &numnew,
+  double &para,
+  std::array<std::array<std::array<std::array<double, 3>, nnodes>, nquad>, nelemn> &phi,
+  std::array<std::array<std::array<double, nnodes>, nquad>, nelemn> &psi,
+  double &reynld,
+  double &tolnew,
+  std::array<double, np>& yc
+);
+
+//******************************************************
+void linsys(
+  std::array<std::array<double, maxeqn>, maxrow>& a,
+  std::array<double, nelemn>& area,
+  std::array<double, maxeqn>& f,
+  std::array<double, maxeqn>& g,
+  std::array<std::array<int, 2>, np>& indx,
+  std::array<int, np>& insc,
+  std::array<int, maxeqn>& ipivot,
+  int neqn,
+  int nlband,
+  std::array<std::array<int, nnodes>, nelemn>& node,
+  int nrow,
+  double para1,
+  double para2,
+  std::array<
+    std::array<
+      std::array<std::array<double, 3>, nnodes>,
+      nquad
+    >, nelemn
+  >& phi,
+  std::array<
+    std::array<
+      std::array<double, nnodes>, nquad
+    >, nelemn
+  >& psi,
+  double reynld,
+  std::array<double, np>& yc
+);
+
+//******************************************************
+void uval(
+  std::array<double, maxeqn> &g,
+  std::array<std::array<int, 2>, np> &indx,
+  int iquad,
+  int it,
+  int neqn,
+  std::array<std::array<int, nnodes>, nelemn> &node,
+  double para,
+  std::array<
+  std::array<
+  std::array<std::array<double, 3>, nnodes>,
+  nquad
+  >, nelemn
+  > &phi,
+  std::array<double, 2> &un,    // ← tamaño fijo 2
+  std::array<double, 2> &unx,   // ← tamaño fijo 2
+  std::array<double, 2> &uny,   // ← tamaño fijo 2
+  std::array<double, np> &yc
+);
+//******************************************************
+double ubdry (double y, double para);
 
 int main(void)
 {
@@ -179,7 +304,7 @@ int main(void)
 //!  SETGRD constructs grid, numbers unknowns, calculates areas,
 //!  and points for midpoint quadrature rule.
 //!
-  setgrd(indx, insc, isotri, iwrite, _long, node);
+  setgrd(indx, insc, isotri, iwrite, _long, neqn, node);
 //!
 //!  Compute the bandwidth
 //!
@@ -195,24 +320,29 @@ int main(void)
 //!
 //!  Set quadrature points
 //!
-//  call setqud(area,nelemn,nnodes,node,np,nquad,xc,xm,yc,ym)
+  setqud(area, node, xc, xm, yc, ym);
 //!
 //!  Evaluate basis functions at quadrature points
 //!
-//  call setbas(nelemn,nnodes,node,np,nquad,phi,psi,xc,xm,yc,ym)
+  setbas(node, xc, yc, phi, psi, xm, ym);
 //!
 //!  NSTOKE now solves the Navier Stokes problem for an inflow
 //!  parameter of 1.0.
 //!
-//  para = 1.0D+00
-//  std::println(" ")
-//  std::println("Solve Navier Stokes problem with parameter = ',para
-//  std::println("for profile at x = ', xc(nodex0)
-//  g(1:neqn) = 1.0D+00
-//
-//  call nstoke (a,area,f,g,indx,insc,ipivot,iwrite, &
-//    maxnew,maxrow,nelemn,neqn,nlband,nnodes,node, &
-//    np,nquad,nrow,numnew,para,phi,psi,reynld,tolnew,yc)
+  para = 1.0;
+  std::println(" ");
+  std::println("Solve Navier Stokes problem with parameter = {}", para);
+  std::println("for profile at x = {}", xc[nodex0-1]);
+  for (int i = 0; i < neqn; ++i) {
+    g[i] = 1.0;
+  }
+
+  nstoke(
+    a, area, f, g, indx, insc, ipivot, iwrite,
+    maxnew, neqn, nlband, node, nrow, numnew,
+    para, phi, psi,
+    reynld, tolnew, yc
+  );
 //!
 //!  RESID computes the residual at the given solution
 //!
@@ -246,7 +376,7 @@ int main(void)
 //    call delete(fileg)
 //    open (unit = iounit,file=fileg,form='formatted',status='new', &
 //      err = 50)
-//    rjpnew = 0.0D+00
+//    rjpnew = 0.0
 //    call gdump (f,indx,insc,iounit,isotri,long,nelemn,neqn, &
 //      nnodes,node,np,npara,nx,ny,para,reynld,rjpnew,xc,yc)
 //  end if
@@ -283,14 +413,14 @@ int main(void)
 //!
 //!  Destroy information about true solution
 //!
-//  f(1:neqn) = 0.0D+00
-//  g(1:neqn) = 0.0D+00
+//  f(1:neqn) = 0.0
+//  g(1:neqn) = 0.0
 //!
 //!  Secant iteration loop
 //!
-//  aold = 0.0D+00
-//  rjpold = 0.0D+00
-//  anew = 0.1D+00
+//  aold = 0.0
+//  rjpold = 0.0
+//  anew = 0.1
 //
 //  do iter = 1, maxsec
 //
@@ -326,7 +456,7 @@ int main(void)
 //!  Solve linear system for du/da
 //!
 //    para = anew
-//    abound = 1.0D+00
+//    abound = 1.0
 //    call linsys (a,area,g,f,indx,insc,ipivot, &
 //      maxrow,nelemn,neqn,nlband,nnodes,node, &
 //      np,nquad,nrow,para,abound,phi,psi,reynld,yc)
@@ -347,13 +477,13 @@ int main(void)
 //!
 //!  JPRIME = 2.0 * DCDA(I) * (GR(I,J)*UNEW(J)-R(I))
 //!
-//    rjpnew = 0.0D+00
+//    rjpnew = 0.0
 //    do i = 1, my
 //      temp = -r(i)
 //      do j = 1, my
 //        temp = temp + gr(i,j) * unew(j)
 //      end do
-//      rjpnew = rjpnew + 2.0D+00 * dcda(i) * temp
+//      rjpnew = rjpnew + 2.0 * dcda(i) * temp
 //    end do
 //
 //    std::println(" ")
@@ -370,7 +500,7 @@ int main(void)
 //!  Update the estimate of the parameter using the secant step
 //!
 //    if (iter == 1) then
-//      a2 = 0.5D+00
+//      a2 = 0.5
 //    else
 //      a2 = aold-rjpold*(anew-aold)/(rjpnew-rjpold)
 //    end if
@@ -418,81 +548,44 @@ int main(void)
 //   50 continue
 //  std::println("CHANNEL could not open the graphics file!")
 }
-//function bsp ( xq, yq, it, iq, id, nelemn, nnodes, node, np, xc, yc )
-//
+
 //******************************************************
-//!
-//!! bsp() evaluates the linear basis functions associated with pressure.
-//!
-//!  Licensing:
-//!
-//!    This code is distributed under the MIT license.
-//!
-//!  Modified:
-//!
-//!    20 January 2007
-//!
-//!  Author:
-//!
-//!    John Burkardt
-//!
-//!  Parameters:
-//!
-//  implicit none
-//
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
-//
-//  integer nelemn
-//  integer nnodes
-//  integer np
-//
-//  real ( kind = rk8 ) bsp
-//  real ( kind = rk8 ) d
-//  integer i1
-//  integer i2
-//  integer i3
-//  integer id
-//  integer iq
-//  integer iq1
-//  integer iq2
-//  integer iq3
-//  integer it
-//  integer node(nelemn,nnodes)
-//  real ( kind = rk8 ) xc(np)
-//  real ( kind = rk8 ) xq
-//  real ( kind = rk8 ) yc(np)
-//  real ( kind = rk8 ) yq
-//
-//  iq1 = iq
-//  iq2 = mod(iq,3)+1
-//  iq3 = mod(iq+1,3)+1
-//  i1 = node(it,iq1)
-//  i2 = node(it,iq2)
-//  i3 = node(it,iq3)
-//  d = (xc(i2)-xc(i1))*(yc(i3)-yc(i1))-(xc(i3)-xc(i1))*(yc(i2)-yc(i1))
-//
-//  if (id == 1) then
-//
-//    bsp = 1.0+((yc(i2)-yc(i3))*(xq-xc(i1))+(xc(i3)-xc(i2))*(yq-yc(i1)))/d
-//
-//  else if (id == 2) then
-//
-//    bsp = (yc(i2)-yc(i3))/d
-//
-//  else if (id == 3) then
-//
-//    bsp = (xc(i3)-xc(i2))/d
-//
-//  else
-//
-//    std::println("BSP - fatal error!")
-//    std::println("unknown value of id = ',id
-//    stop
-//
-//  end if
-//
-//  return
-//end
+double bsp(
+  double xq,
+  double yq,
+  int it,
+  int iq,
+  int id,
+  const std::array<std::array<int, nnodes>, nelemn> &node,
+  const std::array<double, np> &xc,
+  const std::array<double, np> &yc
+) {
+//? bsp() evaluates the linear basis functions associated with pressure.
+  int iq1 = iq;
+  int iq2 = (iq%3);
+  int iq3 = ((iq+1)%3);
+  int i1 = node[it][iq1]-1;
+  int i2 = node[it][iq2]-1;
+  int i3 = node[it][iq3]-1;
+
+  double d = (xc[i2] - xc[i1])*(yc[i3] - yc[i1]) -
+    (xc[i3] - xc[i1])*(yc[i2] - yc[i1]);
+
+  if (id == 1) {
+    return 1.0+(
+      (yc[i2]-yc[i3])*(xq-xc[i1])+(xc[i3]-xc[i2])*(yq-yc[i1])
+    )/d;
+  } else if (id == 2) {
+    return (yc[i2]-yc[i3])/d;
+  } else if (id == 3) {
+    return (xc[i3]-xc[i2])/d;
+  } else {
+    std::println("BSP - fatal error!");
+    std::println("unknown value of id = {}", id);
+    std::exit(1);
+  }
+}
+
 //subroutine daxpy ( n, da, dx, incx, dy, incy )
 //
 //******************************************************
@@ -509,13 +602,13 @@ int main(void)
 //!
 //!  Parameters:
 //!
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
+//  integer, parameter :: rk8 = kind ( 1.0 )
 //
 //  real ( kind = rk8 ) dx(*),dy(*),da
 //  integer i,incx,incy,ix,iy,m,n
 //!
 //  if ( n <= 0)return
-//  if (da  ==  0.0d+00 ) return
+//  if (da  ==  0.0 ) return
 //  if ( incx == 1.and.incy == 1)go to 20
 //!
 //!        code for unequal increments or equal increments
@@ -570,7 +663,7 @@ int main(void)
 //!
 //!  Parameters:
 //!
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
+//  integer, parameter :: rk8 = kind ( 1.0 )
 //
 //  real ( kind = rk8 ) dx(*),dy(*)
 //  integer i,incx,incy,ix,iy,m,n
@@ -632,14 +725,14 @@ int main(void)
 //!
 //!  Parameters:
 //!
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
+//  integer, parameter :: rk8 = kind ( 1.0 )
 //
 //  real ( kind = rk8 ) ddot
 //  real ( kind = rk8 ) dx(*),dy(*),dtemp
 //  integer i,incx,incy,ix,iy,m,n
 //
-//  ddot = 0.0d+00
-//  dtemp = 0.0d+00
+//  ddot = 0.0
+//  dtemp = 0.0
 //  if ( n <= 0)return
 //  if ( incx == 1.and.incy == 1)go to 20
 //!
@@ -770,7 +863,7 @@ int main(void)
 //!
 //!        info    integer
 //!                = 0  normal value.
-//!                = k  if  u(k,k) == 0.0D+00 .  this is not an error
+//!                = k  if  u(k,k) == 0.0 .  this is not an error
 //!                     condition for this subroutine, but it does
 //!                     indicate that dgbsl will divide by zero if
 //!                     called.  use  rcond  in dgbco for a reliable
@@ -803,7 +896,7 @@ int main(void)
 //!     linpack. this version dated 08/14/78 .
 //!     cleve moler, university of new mexico, argonne national lab.
 //!
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
+//  integer, parameter :: rk8 = kind ( 1.0 )
 //
 //  integer lda
 //  integer n
@@ -839,7 +932,7 @@ int main(void)
 //  do jz = j0, j1
 //     i0 = m + 1 - jz
 //     do i = i0, ml
-//        abd(i,jz) = 0.0D+00
+//        abd(i,jz) = 0.0
 //     end do
 //  end do
 //
@@ -854,7 +947,7 @@ int main(void)
 //!
 //     jz = jz + 1
 //     if ( jz <= n ) then
-//       abd(1:ml,jz) = 0.0D+00
+//       abd(1:ml,jz) = 0.0
 //     end if
 //!
 //!  Find L = pivot index.
@@ -865,7 +958,7 @@ int main(void)
 //!
 //!  Zero pivot implies this column already triangularized.
 //!
-//     if ( abd(l,k) == 0.0D+00 ) then
+//     if ( abd(l,k) == 0.0 ) then
 //
 //       info = k
 //!
@@ -881,7 +974,7 @@ int main(void)
 //!
 //!  Compute multipliers.
 //!
-//        t = -1.0D+00 / abd(m,k)
+//        t = -1.0 / abd(m,k)
 //        call dscal ( lm, t, abd(m+1,k), 1 )
 //!
 //!  Row elimination with column indexing.
@@ -906,7 +999,7 @@ int main(void)
 //
 //  ipvt(n) = n
 //
-//  if ( abd(m,n) == 0.0D+00 ) then
+//  if ( abd(m,n) == 0.0 ) then
 //    info = n
 //  end if
 //
@@ -976,7 +1069,7 @@ int main(void)
 //!     linpack. this version dated 08/14/78 .
 //!     cleve moler, university of new mexico, argonne national lab.
 //!
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
+//  integer, parameter :: rk8 = kind ( 1.0 )
 //
 //  integer lda
 //  integer n
@@ -1078,7 +1171,7 @@ int main(void)
 //!
 //!  Parameters:
 //!
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
+//  integer, parameter :: rk8 = kind ( 1.0 )
 //
 //  real ( kind = rk8 ) da,dx(*)
 //  integer i,incx,m,n,nincx
@@ -1150,7 +1243,7 @@ int main(void)
 //!
 //!    Input, real ( kind = rk8 ) PARA(MAXPAR), the parameters.
 //!
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
+//  integer, parameter :: rk8 = kind ( 1.0 )
 //
 //  integer nelemn
 //  integer neqn
@@ -1192,7 +1285,7 @@ int main(void)
 //  do i = 1, np
 //    j = insc(i)
 //    if (j <= 0) then
-//      fval = 0.0D+00
+//      fval = 0.0
 //    else
 //      fval = f(j)
 //    end if
@@ -1204,7 +1297,7 @@ int main(void)
 //  do i = 1, np
 //    j = indx(i,1)
 //    if (j == 0) then
-//      fval = 0.0D+00
+//      fval = 0.0
 //    else if (j < 0) then
 //      fval = ubdry(yc(i),para)
 //    else
@@ -1218,7 +1311,7 @@ int main(void)
 //  do i = 1, np
 //    j = indx(i,2)
 //    if (j <= 0) then
-//      fval = 0.0D+00
+//      fval = 0.0
 //    else
 //      fval = f(j)
 //    end if
@@ -1282,7 +1375,7 @@ int main(void)
 //!
 //  implicit none
 //
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
+//  integer, parameter :: rk8 = kind ( 1.0 )
 //
 //  integer neqn
 //  integer my
@@ -1298,7 +1391,7 @@ int main(void)
 //    if ( 0 < k ) then
 //      u(j) = f(k)
 //    else
-//      u(j) = 0.0D+00
+//      u(j) = 0.0
 //    end if
 //  end do
 //
@@ -1333,7 +1426,7 @@ int main(void)
 //!
 //  implicit none
 //
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
+//  integer, parameter :: rk8 = kind ( 1.0 )
 //
 //  integer my
 //  integer nelemn
@@ -1384,17 +1477,17 @@ int main(void)
 //!
 //!  Input values for 3 point Gauss quadrature
 //!
-//  wt(1) = 5.0D+00 / 9.0D+00
-//  wt(2) = 8.0D+00 / 9.0D+00
+//  wt(1) = 5.0 / 9.0
+//  wt(2) = 8.0 / 9.0
 //  wt(3) = wt(1)
-//  yq(1) = -0.7745966692D+00
-//  yq(2) = 0.0D+00
+//  yq(1) = -0.7745966692
+//  yq(2) = 0.0
 //  yq(3) = -yq(1)
 //!
 //!  zero arrays
 //!
-//  r(1:my) = 0.0D+00
-//  gr(1:my,1:my) = 0.0D+00
+//  r(1:my) = 0.0
+//  gr(1:my,1:my) = 0.0
 //!
 //!  Compute line integral by looping over intervals along line
 //!  using three point Gauss quadrature
@@ -1420,7 +1513,7 @@ int main(void)
 //      bma2 = (yc(kk)-yc(k))/2.0
 //      ar = bma2*wt(iquad)
 //      x = xzero
-//      y = yc(k)+bma2*(yq(iquad)+1.0D+00 )
+//      y = yc(k)+bma2*(yq(iquad)+1.0 )
 //!
 //!  Compute u internal at quadrature points
 //!
@@ -1488,60 +1581,46 @@ int main(void)
 //
 //  return
 //end
-//function idamax ( n, dx, incx )
-//
+
 //******************************************************
-//!
-//!! idamax() finds the index of element having max. absolute value.
-//!
-//!     jack dongarra, linpack, 3/11/78.
-//!     modified 3/93 to return if incx  <=  0.
-//!     modified 12/3/93, array(1) declarations changed to array(*)
-//!
-//!  Parameters:
-//!
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
-//
-//  integer idamax
-//  real ( kind = rk8 ) dmax
-//  real ( kind = rk8 ) dx(*)
-//  integer i,incx,ix,n
-//
-//  idamax = 0
-//  if (  n < 1 .or. incx <= 0 ) return
-//  idamax = 1
-//  if ( n == 1)return
-//  if ( incx == 1)go to 20
-//!
-//!        code for increment not equal to 1
-//!
-//  ix = 1
-//  dmax = dabs(dx(1))
-//  ix = ix + incx
-//  do i = 2,n
-//     if ( dabs(dx(ix)) <= dmax) go to 5
-//     idamax = i
-//     dmax = dabs(dx(ix))
-//    5    ix = ix + incx
-//  end do
-//
-//  return
-//!
-//!        code for increment equal to 1
-//!
-//   20 continue
-//
-//  dmax = abs ( dx(1) )
-//
-//  do i = 2,n
-//    if ( dmax < abs ( dx(i) ) ) then
-//      idamax = i
-//      dmax = abs ( dx(i) )
-//    end if
-//  end do
-//
-//  return
-//end
+int idamax(int n, std::span<const double> dx, int incx) {
+//? idamax() finds the index of element having max. absolute value.
+
+  // Si el tamaño es menor que 1 o el incremento no es positivo,
+  // retorna -1 (equivalente a 0 en Fortran para indicar "no encontrado")
+  if (n < 1 || incx <= 0) return -1;
+
+  int idamax_val = 0; // Guardará el índice basado en 0
+  if (n == 1) return idamax_val;
+
+  if (incx == 1) {
+    // Código para incremento igual a 1
+    double dmax = std::abs(dx[0]);
+
+    for (int i = 1; i < n; ++i) {
+      if (dmax < std::abs(dx[i])) {
+        idamax_val = i;
+        dmax = std::abs(dx[i]);
+      }
+    }
+  } else {
+    // Código para incremento diferente de 1
+    int ix = 0; // Índice basado en 0
+    double dmax = std::abs(dx[ix]);
+    ix += incx;
+
+    for (int i = 1; i < n; ++i) {
+      if (std::abs(dx[ix]) > dmax) {
+        idamax_val = i;
+        dmax = std::abs(dx[ix]);
+      }
+      ix += incx;
+    }
+  }
+
+  return idamax_val;
+}
+
 //function igetl ( k, iline, my )
 //
 //******************************************************
@@ -1564,7 +1643,7 @@ int main(void)
 //!
 //  implicit none
 //
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
+//  integer, parameter :: rk8 = kind ( 1.0 )
 //
 //  integer my
 //
@@ -1587,351 +1666,273 @@ int main(void)
 //  igetl = 0
 //  stop
 //end
-//subroutine linsys ( a, area, f, g, indx, insc, ipivot, maxrow, nelemn, &
-//  neqn, nlband, nnodes, node, np, nquad, nrow, para1, para2, phi, psi, &
-//  reynld, yc )
-//
+
 //******************************************************
-//!
-//!! linsys() sets up and solves the linear system.
-//!
-//!  Discussion:
-//!
-//!    The G array contains the previous solution.
-//!
-//!    The F array contains the right hand side initially and then the
-//!    current solution.
-//!
-//!  Licensing:
-//!
-//!    This code is distributed under the MIT license.
-//!
-//!  Modified:
-//!
-//!    28 February 2006
-//!
-//!  Author:
-//!
-//!    John Burkardt
-//!
-//!  Parameters:
-//!
-//  implicit none
-//
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
-//
-//  integer maxrow
-//  integer nelemn
-//  integer neqn
-//  integer nnodes
-//  integer np
-//  integer nquad
-//  integer nrow
-//
-//  real ( kind = rk8 ) a(maxrow,neqn)
-//  real ( kind = rk8 ) ar
-//  real ( kind = rk8 ) area(nelemn)
-//  real ( kind = rk8 ) bb
-//  real ( kind = rk8 ) bbb
-//  real ( kind = rk8 ) bbbl
-//  real ( kind = rk8 ) bbl
-//  real ( kind = rk8 ) bbx
-//  real ( kind = rk8 ) bby
-//  real ( kind = rk8 ) bx
-//  real ( kind = rk8 ) by
-//  real ( kind = rk8 ) f(neqn)
-//  real ( kind = rk8 ) g(neqn)
-//  integer i
-//  integer ihor
-//  integer indx(np,2)
-//  integer info
-//  integer insc(np)
-//  integer ioff
-//  integer ip
-//  integer ipivot(neqn)
-//  integer ipp
-//  integer iprs
-//  integer iq
-//  integer iqq
-//  integer iquad
-//  integer it
-//  integer iuse
-//  integer iver
-//  integer j
-//  integer job
-//  integer jp
-//  integer ju
-//  integer jv
-//  integer nlband
-//  integer node(nelemn,nnodes)
-//  real ( kind = rk8 ) para1
-//  real ( kind = rk8 ) para2
-//  real ( kind = rk8 ) phi(nelemn,nquad,nnodes,3)
-//  real ( kind = rk8 ) psi(nelemn,nquad,nnodes)
-//  real ( kind = rk8 ) reynld
-//  real ( kind = rk8 ) ubdry
-//  real ( kind = rk8 ) un(2)
-//  real ( kind = rk8 ) unx(2)
-//  real ( kind = rk8 ) uny(2)
-//  real ( kind = rk8 ) uu
-//  real ( kind = rk8 ) visc
-//  real ( kind = rk8 ) yc(np)
-//
-//  ioff = nlband + nlband + 1
-//  visc = 1.0D+00 / reynld
-//  f(1:neqn) = 0.0D+00
-//  a(1:nrow,1:neqn) = 0.0D+00
-//!
-//!  For each element,
-//!
-//  do it = 1, nelemn
-//
-//    ar = area(it) / 3.0D+00
-//!
-//!  and for each quadrature point in the element,
-//!
-//    do iquad = 1, nquad
-//!
-//!  Evaluate velocities at quadrature point
-//!
-//      call uval (g,indx,iquad,it,nelemn,neqn,nnodes,node, &
-//        np,nquad,para1,phi,un,unx,uny,yc)
-//!
-//!  For each basis function,
-//!
-//      do iq = 1, nnodes
-//
-//        ip = node(it,iq)
-//        bb = phi(it,iquad,iq,1)
-//        bx = phi(it,iquad,iq,2)
-//        by = phi(it,iquad,iq,3)
-//        bbl = psi(it,iquad,iq)
-//        ihor = indx(ip,1)
-//        iver = indx(ip,2)
-//        iprs = insc(ip)
-//
-//        if ( 0 < ihor ) then
-//          f(ihor) = f(ihor)+ar*bb*(un(1)*unx(1)+un(2)*uny(1))
-//        end if
-//
-//        if ( 0 < iver ) then
-//          f(iver) = f(iver)+ar*bb*(un(1)*unx(2)+un(2)*uny(2))
-//        end if
-//!
-//!  For another basis function,
-//!
-//        do iqq = 1, nnodes
-//
-//          ipp = node(it,iqq)
-//          bbb = phi(it,iquad,iqq,1)
-//          bbx = phi(it,iquad,iqq,2)
-//          bby = phi(it,iquad,iqq,3)
-//          bbbl = psi(it,iquad,iqq)
-//          ju = indx(ipp,1)
-//          jv = indx(ipp,2)
-//          jp = insc(ipp)
-//!
-//!  Horizontal velocity variable
-//!
-//          if ( 0 < ju ) then
-//
-//            if ( 0 < ihor ) then
-//              iuse = ihor-ju+ioff
-//              a(iuse,ju) = a(iuse,ju)+ar*(visc*(by*bby+bx*bbx) &
-//                + bb*(bbb*unx(1)+bbx*un(1)+bby*un(2)))
-//            end if
-//
-//            if ( 0 < iver ) then
-//              iuse = iver-ju+ioff
-//              a(iuse,ju) = a(iuse,ju)+ar*bb*bbb*unx(2)
-//            end if
-//
-//            if ( 0 < iprs ) then
-//              iuse = iprs-ju+ioff
-//              a(iuse,ju) = a(iuse,ju)+ar*bbx*bbl
-//            end if
-//
-//          else if ( ju < 0 ) then
-//
-//            uu = ubdry(yc(ipp),para2)
-//            if ( 0 < ihor ) then
-//              f(ihor) = f(ihor)-ar*uu*(visc*(by*bby+bx*bbx) &
-//                + bb*(bbb*unx(1)+bbx*un(1)+bby*un(2)))
-//            end if
-//
-//            if ( 0 < iver ) then
-//              f(iver) = f(iver)-ar*uu*bb*bbb*unx(2)
-//            end if
-//
-//            if ( 0 < iprs ) then
-//              f(iprs) = f(iprs)-ar*uu*bbx*bbl
-//            end if
-//
-//          end if
-//!
-//!  Vertical velocity variable
-//!
-//          if ( 0 < jv ) then
-//
-//            if ( 0 < ihor ) then
-//              iuse = ihor-jv+ioff
-//              a(iuse,jv) = a(iuse,jv)+ar*bb*bbb*uny(1)
-//            end if
-//
-//            if ( 0 < iver ) then
-//              iuse = iver-jv+ioff
-//              a(iuse,jv) = a(iuse,jv)+ar*(visc*(by*bby+bx*bbx) &
-//                +bb*(bbb*uny(2)+bby*un(2)+bbx*un(1)))
-//            end if
-//
-//            if ( 0 < iprs ) then
-//              iuse = iprs-jv+ioff
-//              a(iuse,jv) = a(iuse,jv)+ar*bby*bbl
-//            end if
-//
-//          end if
-//!
-//!  Pressure variable
-//!
-//          if ( 0 < jp ) then
-//
-//            if ( 0 < ihor ) then
-//              iuse = ihor-jp+ioff
-//              a(iuse,jp) = a(iuse,jp)-ar*bx*bbbl
-//            end if
-//
-//            if ( 0 < iver ) then
-//              iuse = iver-jp+ioff
-//              a(iuse,jp) = a(iuse,jp)-ar*by*bbbl
-//            end if
-//
-//          end if
-//
-//        end do
-//      end do
-//    end do
-//  end do
-//!
-//!  To avoid singularity of the pressure system, the last pressure
-//!  is simply assigned a value of 0.
-//!
-//  f(neqn) = 0.0D+00
-//  do j = neqn-nlband, neqn-1
-//    i = neqn-j+ioff
-//    a(i,j) = 0.0D+00
-//  end do
-//  a(ioff,neqn) = 1.0D+00
-//!
-//!  Factor the matrix
-//!
-//  call dgbfa ( a, maxrow, neqn, nlband, nlband, ipivot, info )
-//
-//  if ( info /= 0 ) then
-//    std::println(" ")
-//    std::println("LINSYS - fatal error!")
-//    std::println("DGBFA returns INFO = ',info
-//    stop
-//  end if
-//!
-//!  Solve the linear system
-//!
-//  job = 0
+void linsys(
+  std::array<std::array<double, maxeqn>, maxrow>& a,
+  std::array<double, nelemn>& area,
+  std::array<double, maxeqn>& f,
+  std::array<double, maxeqn>& g,
+  std::array<std::array<int, 2>, np>& indx,
+  std::array<int, np>& insc,
+  std::array<int, maxeqn>& ipivot,
+  int neqn,
+  int nlband,
+  std::array<std::array<int, nnodes>, nelemn>& node,
+  int nrow,
+  double para1,
+  double para2,
+  std::array<
+    std::array<
+      std::array<std::array<double, 3>, nnodes>,
+      nquad
+    >, nelemn
+  >& phi,
+  std::array<
+    std::array<
+      std::array<double, nnodes>, nquad
+    >, nelemn
+  >& psi,
+  double reynld,
+  std::array<double, np>& yc
+) {
+  //? linsys() sets up and solves the linear system.
+  //?    The G array contains the previous solution.
+  //?
+  //?    The F array contains the right hand side initially and then the
+  //?    current solution.
+
+  int i;
+  int info;
+  int ip;
+  double bb;
+  double bx;
+  double by;
+  double bbl;
+  int ihor;
+  int iver;
+  int iprs;
+  int ipp;
+  double bbb;
+  double bbx;
+  double bby;
+  double bbbl;
+  int ju;
+  int jv;
+  int jp;
+  int iuse;
+  std::array<double, 2> un;
+  std::array<double, 2> unx;
+  std::array<double, 2> uny;
+  double ar;
+  double uu;
+  int ioff = nlband + nlband + 1;
+  double visc = 1.0 / reynld;
+  for (int j = 0; j < neqn; j++) {
+    f[j] = 0.0;
+  }
+  for (int k = 0; k < nrow; k++) {
+    for (int j = 0; j < neqn; j++) {
+      a[k][j] = 0.0;
+    }
+  }
+  //!  For each element,
+  for (int it = 0; it < nelemn; ++it) {
+
+    ar = area[it] / 3.0;
+    //!  and for each quadrature point in the element,
+    for (int iquad = 0; iquad < nquad; ++iquad) {
+      //!  Evaluate velocities at quadrature point
+      uval(g, indx, iquad, it, neqn, node, para1, phi, un, unx, uny, yc);
+      //!  For each basis function,
+      for (int iq = 0; iq < nnodes; ++iq) {
+        ip = node[it][iq];
+        bb = phi[it][iquad][iq][0];
+        bx = phi[it][iquad][iq][1];
+        by = phi[it][iquad][iq][2];
+        bbl = psi[it][iquad][iq];
+        ihor = indx[ip-1][0];
+        iver = indx[ip-1][1];
+        iprs = insc[ip-1];
+
+        if ( 0 < ihor ) {
+          f[ihor-1] += ar*bb*(un[0]*unx[0]+un[1]*uny[0]);
+        }
+
+        if ( 0 < iver ) {
+          f[iver-1] += ar*bb*(un[0]*unx[1]+un[1]*uny[1]);
+        }
+        //!  For another basis function,
+        //do iqq = 1, nnodes
+        for (int iqq = 0; iqq < nnodes; ++iqq) {
+          ipp = node[it][iqq];
+          bbb = phi[it][iquad][iqq][0];
+          bbx = phi[it][iquad][iqq][1];
+          bby = phi[it][iquad][iqq][2];
+          bbbl = psi[it][iquad][iqq];
+          ju = indx[ipp-1][0];
+          jv = indx[ipp-1][1];
+          jp = insc[ipp-1];
+          //!  Horizontal velocity variable
+          if ( 0 < ju ) {
+            if ( 0 < ihor ) {
+              iuse = ihor-ju+ioff;
+              a[iuse-1][ju-1] += ar*(
+                visc*(by*bby+bx*bbx)
+                + bb*(bbb*unx[0]+bbx*un[0]+bby*un[1])
+              );
+            }
+
+            if ( 0 < iver ) {
+              iuse = iver-ju+ioff;
+              a[iuse-1][ju-1] += ar*bb*bbb*unx[1];
+            }
+
+            if ( 0 < iprs ) {
+              iuse = iprs-ju+ioff;
+              a[iuse-1][ju-1] += ar*bbx*bbl;
+            }
+
+          } else if ( ju < 0 ) {
+            uu = ubdry(yc[ipp-1],para2);
+            if ( 0 < ihor ) {
+              f[ihor-1] -= ar*uu*(
+                visc*(by*bby+bx*bbx) +
+                bb*(bbb*unx[0]+bbx*un[0]+bby*un[1])
+              );
+            }
+
+            if ( 0 < iver ) {
+              f[iver-1] -= ar*uu*bb*bbb*unx[1];
+            }
+
+            if ( 0 < iprs ) {
+              f[iprs-1] -= ar*uu*bbx*bbl;
+            }
+          }
+          //!  Vertical velocity variable
+          if ( 0 < jv ){
+
+            if ( 0 < ihor ) {
+              iuse = ihor-jv+ioff;
+              a[iuse-1][jv-1] += ar*bb*bbb*uny[0];
+            }
+
+            if ( 0 < iver ) {
+              iuse = iver-jv+ioff;
+              a[iuse-1][jv-1] += ar*(
+                visc*(by*bby+bx*bbx) +
+                bb*(bbb*uny[1]+bby*un[1]+bbx*un[0])
+              );
+            }
+
+            if ( 0 < iprs ) {
+              iuse = iprs-jv+ioff;
+              a[iuse-1][jv-1] += ar*bby*bbl;
+            }
+          }
+          //!  Pressure variable
+          if ( 0 < jp ) {
+            if ( 0 < ihor ) {
+              iuse = ihor-jp+ioff;
+              a[iuse-1][jp-1] -= ar*bx*bbbl;
+            }
+            if ( 0 < iver ) {
+              iuse = iver-jp+ioff;
+              a[iuse-1][jp-1] -= ar*by*bbbl;
+            }
+          }
+        }
+      }
+    }
+  }
+  //!  To avoid singularity of the pressure system, the last pressure
+  //!  is simply assigned a value of 0.
+  f[neqn] = 0.0;
+  //do j = neqn-nlband, neqn-1
+  for (int j = neqn-nlband; j < neqn; ++j) {
+    i = neqn-j+ioff;
+    a[i-1][j-1] = 0.0;
+  }
+  a[ioff][neqn] = 1.0;
+  //!  Factor the matrix
+  //call dgbfa ( a, maxrow, neqn, nlband, nlband, ipivot, info )
+
+  if ( info != 0 ) {
+    std::println(" ");
+    std::println("LINSYS - fatal error!");
+    std::println("DGBFA returns INFO = {}", info);
+    std::exit(1);
+  }
+  //!  Solve the linear system
+  int job = 0;
 //  call dgbsl ( a, maxrow, neqn, nlband, nlband, ipivot, f, job )
-//
-//  return
-//end
-//subroutine nstoke (a,area,f,g,indx,insc,ipivot,iwrite,maxnew,maxrow, &
-//  nelemn,neqn,nlband,nnodes,node,np,nquad,nrow,numnew,para,phi,psi, &
-//  reynld,tolnew,yc)
+}
+
+//subroutine nstoke (
+//  a,area,f,g,indx,insc,ipivot,iwrite,maxnew,maxrow, &
+//  nelemn,neqn,nlband,nnodes,node,np,nquad,nrow,&
+//  numnew,para,phi,psi,reynld,tolnew,yc)
 //
 //******************************************************
-//!
-//!! nstoke() solves the Navier Stokes equation using Taylor-Hood elements.
-//!
-//!  The G array contains the previous iterate.
-//!
-//!  The F array contains the right hand side initially and then the
-//!  current iterate.
-//!
-//!  Licensing:
-//!
-//!    This code is distributed under the MIT license.
-//!
-//!  Modified:
-//!
-//!    20 January 2007
-//!
-//!  Author:
-//!
-//!    John Burkardt
-//!
-//!  Parameters:
-//!
-//  implicit none
-//
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
-//
-//  integer maxrow
-//  integer nelemn
-//  integer neqn
-//  integer nnodes
-//  integer np
-//  integer nquad
-//  integer nrow
-//
-//  real ( kind = rk8 ) a(maxrow,neqn)
-//  real ( kind = rk8 ) area(nelemn)
-//  double precision diff
-//  real ( kind = rk8 ) f(neqn)
-//  real ( kind = rk8 ) g(neqn)
-//  integer idamax
-//  integer indx(np,2)
-//  integer insc(np)
-//  integer ipivot(neqn)
-//  integer iter
-//  integer iwrite
-//  integer maxnew
-//  integer nlband
-//  integer node(nelemn,nnodes)
-//  integer numnew
-//  real ( kind = rk8 ) para
-//  real ( kind = rk8 ) phi(nelemn,nquad,nnodes,3)
-//  real ( kind = rk8 ) psi(nelemn,nquad,nnodes)
-//  real ( kind = rk8 ) reynld
-//  real ( kind = rk8 ) tolnew
-//  real ( kind = rk8 ) yc(np)
-//
-//  do iter = 1, maxnew
-//
-//    numnew = numnew + 1
-//
-//    call linsys (a,area,f,g,indx,insc,ipivot, &
-//      maxrow,nelemn,neqn,nlband,nnodes,node, &
-//      np,nquad,nrow,para,para,phi,psi,reynld,yc)
-//!
-//!  Check for convergence
-//!
-//    g(1:neqn) = g(1:neqn) - f(1:neqn)
-//    diff = abs ( g(idamax(neqn,g,1)) )
-//
-//    if ( 1 <= iwrite ) then
-//      std::println("NSTOKE iteration ',iter,' Mnorm = ',diff
-//    end if
-//
-//    g(1:neqn) = f(1:neqn)
-//
-//    if ( diff <= tolnew ) then
-//      std::println("Navier Stokes iteration converged in ', &
-//        iter,' iterations.")
-//      return
-//    end if
-//
-//  end do
-//
-//  std::println("Navier Stokes solution did not converge!")
-//
-//  return
-//end
+void nstoke(
+  std::array<std::array<double, maxeqn>, maxrow> &a,
+  std::array<double, nelemn> &area,
+  std::array<double, maxeqn> &f,
+  std::array<double, maxeqn> &g,
+  std::array<std::array<int, 2>, np> &indx,
+  std::array<int, np> &insc,
+  std::array<int, maxeqn> &ipivot,
+  int iwrite,
+  int &maxnew,
+  int neqn, int nlband,
+  std::array<std::array<int, nnodes>, nelemn> &node,
+  int &nrow,
+  int &numnew,
+  double &para,
+  std::array<std::array<std::array<std::array<double, 3>, nnodes>, nquad>, nelemn> &phi,
+  std::array<std::array<std::array<double, nnodes>, nquad>, nelemn> &psi,
+  double &reynld,
+  double &tolnew,
+  std::array<double, np>& yc
+) {
+  //!! nstoke() solves the Navier Stokes equation using Taylor-Hood elements.
+  //!
+  //!  The G array contains the previous iterate.
+  //!
+  //!  The F array contains the right hand side initially and then the current iterate.
+  for (int iter = 1; iter <= maxnew; ++iter) {
+    numnew ++;
+
+    linsys(
+      a, area, f, g, indx, insc, ipivot,
+      neqn, nlband, node,
+      nrow, para, para, phi, psi, reynld, yc
+    );
+    //! Check for convergence
+    for (int i = 0; i < neqn; ++i) {
+      g[i] = g[i] - f[i];
+    }
+    double diff = std::abs( g[idamax(neqn,g,1)] );
+
+    if ( 1 <= iwrite ) {
+      std::println("NSTOKE iteration {} Mnorm = {}", iter, diff);
+    }
+
+    for (int i = 0; i < neqn; ++i) {
+      g[i] = f[i];
+    }
+
+    if ( diff <= tolnew ) {
+      std::println("Navier Stokes iteration converged in {} iterations.", iter);
+      return;
+    }
+
+  }
+
+  std::println("Navier Stokes solution did not converge!");
+}
+
 //subroutine pval (g,insc,long,mx,my,nelemn,neqn,nnodes,node,np,press)
 //
 //******************************************************
@@ -1954,7 +1955,7 @@ int main(void)
 //!
 //  implicit none
 //
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
+//  integer, parameter :: rk8 = kind ( 1.0 )
 //
 //  integer nelemn
 //  integer neqn
@@ -1975,7 +1976,7 @@ int main(void)
 //  integer node(nelemn,nnodes)
 //  real ( kind = rk8 ) press(mx,my)
 //
-//  press(1:mx,1:my) = 0.0D+00
+//  press(1:mx,1:my) = 0.0
 //!
 //!  Read the pressures where they are computed.
 //!  These are "(odd, odd)" points.
@@ -1997,7 +1998,7 @@ int main(void)
 //      if ( 0 < ivar ) then
 //        press(i,j) = g(ivar)
 //      else
-//        press(i,j) = 0.0D+00
+//        press(i,j) = 0.0
 //      end if
 //
 //    end do
@@ -2007,13 +2008,13 @@ int main(void)
 //!
 //  do i = 2,mx-1,2
 //    do j = 1,my,2
-//      press(i,j) = 0.5D+00*(press(i-1,j)+press(i+1,j))
+//      press(i,j) = 0.5*(press(i-1,j)+press(i+1,j))
 //    end do
 //  end do
 //
 //  do j = 2,my-1,2
 //    do i = 1,mx,2
-//      press(i,j) = 0.5D+00*(press(i,j-1)+press(i,j+1))
+//      press(i,j) = 0.5*(press(i,j-1)+press(i,j+1))
 //    end do
 //  end do
 //!
@@ -2021,99 +2022,88 @@ int main(void)
 //!
 //  do j = 2,my-1,2
 //    do i = 2,mx-1,2
-//      press(i,j) = 0.5D+00*(press(i-1,j-1)+press(i+1,j+1))
+//      press(i,j) = 0.5*(press(i-1,j-1)+press(i+1,j+1))
 //    end do
 //  end do
 //
 //  return
 //end
-//subroutine qbf (x,y,it,in,bb,bx,by,nelemn,nnodes,node,np,xc,yc)
-//
+
 //******************************************************
-//!
-//!! qbf() evaluates a quadratic basis function in a triangle.
-//!
-//!  Licensing:
-//!
-//!    This code is distributed under the MIT license.
-//!
-//!  Modified:
-//!
-//!    20 January 2007
-//!
-//!  Author:
-//!
-//!    John Burkardt
-//!
-//!  Parameters:
-//!
-//  implicit none
-//
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
-//
-//  integer nelemn
-//  integer nnodes
-//  integer np
-//
-//  real ( kind = rk8 ) bb
-//  real ( kind = rk8 ) bx
-//  real ( kind = rk8 ) by
-//  real ( kind = rk8 ) c
-//  real ( kind = rk8 ) d
-//  integer i1
-//  integer i2
-//  integer i3
-//  integer in
-//  integer in1
-//  integer in2
-//  integer in3
-//  integer inn
-//  integer it
-//  integer j1
-//  integer j2
-//  integer j3
-//  integer node(nelemn,nnodes)
-//  real ( kind = rk8 ) s
-//  real ( kind = rk8 ) t
-//  real ( kind = rk8 ) x
-//  real ( kind = rk8 ) xc(np)
-//  real ( kind = rk8 ) y
-//  real ( kind = rk8 ) yc(np)
-//
-//  if (in <= 3) then
-//    in1 = in
-//    in2 = mod(in,3)+1
-//    in3 = mod(in+1,3)+1
-//    i1 = node(it,in1)
-//    i2 = node(it,in2)
-//    i3 = node(it,in3)
-//    d = (xc(i2)-xc(i1))*(yc(i3)-yc(i1))-(xc(i3)-xc(i1))*(yc(i2)-yc(i1))
-//    t = 1.0+((yc(i2)-yc(i3))*(x-xc(i1))+(xc(i3)-xc(i2))*(y-yc(i1)))/d
-//    bb = t*(2.0D+00*t-1.0D+00)
-//    bx = (yc(i2)-yc(i3))*(4.0D+00*t-1.0D+00)/d
-//    by = (xc(i3)-xc(i2))*(4.0D+00*t-1.0D+00)/d
-//  else
-//    inn = in-3
-//    in1 = inn
-//    in2 = mod(inn,3)+1
-//    in3 = mod(inn+1,3)+1
-//    i1 = node(it,in1)
-//    i2 = node(it,in2)
-//    i3 = node(it,in3)
-//    j1 = i2
-//    j2 = i3
-//    j3 = i1
-//    d = (xc(i2)-xc(i1))*(yc(i3)-yc(i1))-(xc(i3)-xc(i1))*(yc(i2)-yc(i1))
-//    c = (xc(j2)-xc(j1))*(yc(j3)-yc(j1))-(xc(j3)-xc(j1))*(yc(j2)-yc(j1))
-//    t = 1.0D+00+((yc(i2)-yc(i3))*(x-xc(i1))+(xc(i3)-xc(i2))*(y-yc(i1)))/d
-//    s = 1.0D+00+((yc(j2)-yc(j3))*(x-xc(j1))+(xc(j3)-xc(j2))*(y-yc(j1)))/c
-//    bb = 4.0D+00*s*t
-//    bx = 4.0D+00*(t*(yc(j2)-yc(j3))/c+s*(yc(i2)-yc(i3))/d)
-//    by = 4.0D+00*(t*(xc(j3)-xc(j2))/c+s*(xc(i3)-xc(i2))/d)
-//  end if
-//
-//  return
-//end
+void qbf(
+  double x,
+  double y,
+  int it,
+  int in,
+  double &bb,
+  double &bx,
+  double &by,
+  const std::array<std::array<int, nnodes>, nelemn> &node,
+  const std::array<double, np> &xc,
+  const std::array<double, np> &yc
+) {
+  //? qbf() evaluates a quadratic basis function in a triangle.
+  int in1;
+  int in2;
+  int in3;
+  int i1;
+  int i2;
+  int i3;
+  double d;
+  double t;
+  double c;
+  double s;
+  int inn;
+  int j1;
+  int j2;
+  int j3;
+
+  if (in < 3) {
+    in1 = in;
+    in2 = (in%3);
+    in3 = (in+1)%3;
+    i1 = node[it][in1];
+    i2 = node[it][in2];
+    i3 = node[it][in3];
+    d = (xc[i2] - xc[i1])*(yc[i3] - yc[i1]) -
+      (xc[i3] - xc[i1])*(yc[i2] - yc[i1]);
+    t = 1.0+(
+      (yc[i2]-yc[i3])*(x-xc[i1])+(xc[i3]-xc[i2])*(y-yc[i1])
+    )/d;
+    bb = t*(2.0*t-1.0);
+    bx = (yc[i2]-yc[i3])*(4.0*t-1.0)/d;
+    by = (xc[i3]-xc[i2])*(4.0*t-1.0)/d;
+  } else {
+    inn = in-3;
+    in1 = inn;
+    in2 = inn % 3;
+    in3 = (inn+1) % 3;
+    i1 = node[it][in1];
+    i2 = node[it][in2];
+    i3 = node[it][in3];
+    j1 = i2;
+    j2 = i3;
+    j3 = i1;
+    d = (xc[i2]-xc[i1])*(yc[i3]-yc[i1]) -
+      (xc[i3]-xc[i1])*(yc[i2]-yc[i1]);
+    c = (xc[j2]-xc[j1])*(yc[j3]-yc[j1]) -
+      (xc[j3]-xc[j1])*(yc[j2]-yc[j1]);
+    t = 1.0+(
+      (yc[i2] - yc[i3])*(x - xc[i1]) +
+      (xc[i3] - xc[i2])*(y - yc[i1])
+    )/d;
+    s = 1.0+(
+      (yc[j2] - yc[j3])*(x - xc[j1]) +
+      (xc[j3] - xc[j2])*(y - yc[j1])
+    )/c;
+    bb = 4.0*s*t;
+    bx = 4.0*(t*(yc[j2] - yc[j3])/c +
+      s*(yc[i2] - yc[i3])/d);
+    by = 4.0*(t*(xc[j3] - xc[j2])/c +
+      s*(xc[i3] - xc[i2])/d);
+  }
+}
+
 //subroutine resid (area,g,indx,insc,iwrite,nelemn,neqn,nnodes, &
 //  node,np,nquad,para,phi,psi,res,reynld,yc)
 //
@@ -2143,7 +2133,7 @@ int main(void)
 //!
 //  implicit none
 //
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
+//  integer, parameter :: rk8 = kind ( 1.0 )
 //
 //  integer nelemn
 //  integer neqn
@@ -2205,15 +2195,15 @@ int main(void)
 //  real ( kind = rk8 ) visc
 //  real ( kind = rk8 ) yc(np)
 //
-//  visc = 1.0D+00 / reynld
+//  visc = 1.0 / reynld
 //
-//  res(1:neqn) = 0.0D+00
+//  res(1:neqn) = 0.0
 //!
 //!  For each element,
 //!
 //  do 90 it = 1, nelemn
 //
-//    ar = area(it) / 3.0D+00
+//    ar = area(it) / 3.0
 //!
 //!  and for each quadrature point in the element,
 //!
@@ -2323,7 +2313,7 @@ int main(void)
 //
 //  res(neqn) = g(neqn)
 //
-//  rmax = 0.0D+00
+//  rmax = 0.0
 //  imax = 0
 //  ibad = 0
 //
@@ -2450,69 +2440,44 @@ void setban(
   }
 }
 
-//subroutine setbas(nelemn,nnodes,node,np,nquad,phi,psi,xc,xm,yc,ym)
-//
 //******************************************************
-//!
-//!! setbas() computes the basis functions at each integration point.
-//!
-//!  Licensing:
-//!
-//!    This code is distributed under the MIT license.
-//!
-//!  Modified:
-//!
-//!    20 January 2007
-//!
-//!  Author:
-//!
-//!    John Burkardt
-//!
-//!  Parameters:
-//!
-//  implicit none
-//
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
-//
+void setbas(
+  std::array<std::array<int, nnodes>, nelemn> &node,
+  std::array<double, np> &xc,
+  std::array<double, np> &yc,
+  std::array<std::array<std::array<std::array<double, 3>, nnodes>, nquad>, nelemn> &phi,
+  std::array<std::array<std::array<double, nnodes>, nquad>, nelemn> &psi,
+  std::array<std::array<double, nquad>, nelemn> &xm,
+  std::array<std::array<double, nquad>, nelemn> &ym
+) {
+//? setbas() computes the basis functions at each integration point.
 //  integer nelemn
 //  integer nnodes
 //  integer np
 //  integer nquad
 //
-//  real ( kind = rk8 ) bb
-//  real ( kind = rk8 ) bsp
-//  real ( kind = rk8 ) bx
-//  real ( kind = rk8 ) by
-//  integer iq
-//  integer it
-//  integer j
-//  integer node(nelemn,nnodes)
-//  real ( kind = rk8 ) phi(nelemn,nquad,nnodes,3)
-//  real ( kind = rk8 ) psi(nelemn,nquad,nnodes)
-//  real ( kind = rk8 ) x
-//  real ( kind = rk8 ) xc(np)
-//  real ( kind = rk8 ) xm(nelemn,nquad)
-//  real ( kind = rk8 ) y
-//  real ( kind = rk8 ) yc(np)
-//  real ( kind = rk8 ) ym(nelemn,nquad)
-//
-//  do it = 1,nelemn
-//    do j = 1,nquad
-//      x = xm(it,j)
-//      y = ym(it,j)
-//      do iq = 1,6
-//        psi(it,j,iq) = bsp(x,y,it,iq,1,nelemn,nnodes,node,np,xc,yc)
-//        call qbf(x,y,it,iq,bb,bx,by,nelemn,nnodes,node,np,xc,yc)
-//        phi(it,j,iq,1) = bb
-//        phi(it,j,iq,2) = bx
-//        phi(it,j,iq,3) = by
-//      end do
-//    end do
-//  end do
-//  return
-//end
-//subroutine setgrd (indx,insc,isotri,iwrite,long,maxeqn,mx,my, &
-//  nelemn,neqn,nnodes,node,np,nx,ny)
+  double bb;
+  double bx;
+  double by;
+
+  double x, y;
+  //do it = 1,nelemn
+  for (int it = 0; it < nelemn; ++it) {
+    //do j = 1,nquad
+    for (int j = 0; j < nquad; ++j) {
+      x = xm[it][j];
+      y = ym[it][j];
+      //do iq = 1,6
+      for (int iq = 0; iq < 6; ++iq) {
+        psi[it][j][iq] = bsp(x,y,it,iq,1,node,xc,yc);
+        qbf(x,y,it,iq,bb,bx,by,node,xc,yc);
+        phi[it][j][iq][0] = bb;
+        phi[it][j][iq][1] = bx;
+        phi[it][j][iq][2] = by;
+      }
+    }
+  }
+}
 
 //******************************************************
 void setgrd(
@@ -2520,7 +2485,7 @@ void setgrd(
     std::array<std::array<int, 2>, np> &indx,
     std::array<int, np> &insc,
     std::array<int, nelemn> &isotri,
-    int &iwrite, bool &_long,
+    int &iwrite, bool &_long, int &neqn,
     std::array<std::array<int, nnodes>, nelemn> &node
 ){
 //? setgrd() sets up the grid for the problem..
@@ -2543,7 +2508,7 @@ void setgrd(
 //!
 //!  Construct grid coordinates, elements, and ordering of unknowns
 //!
-  int neqn = 0;
+  neqn = 0;
   int ielemn = 0;
 
   for (int ip = 1; ip <= np; ++ip) {
@@ -2739,7 +2704,7 @@ void setlin(
 //? setlin() gets the unknown indices along the profile line.
 //  implicit none
 //
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
+//  integer, parameter :: rk8 = kind ( 1.0 )
 //
 //  integer my
 //  integer np
@@ -2791,30 +2756,17 @@ void setlin(
   }
 }
 
-//subroutine setqud ( area, nelemn, nnodes, node, np, nquad, xc, xm, yc, ym )
-//
 //******************************************************
-//!
-//!! setqud() sets midpoint quadrature rule information.
-//!
-//!  Licensing:
-//!
-//!    This code is distributed under the MIT license.
-//!
-//!  Modified:
-//!
-//!    20 January 2007
-//!
-//!  Author:
-//!
-//!    John Burkardt
-//!
-//!  Parameters:
-//!
-//  implicit none
-//
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
-//
+//subroutine setqud ( area, nelemn, nnodes, node, np, nquad, xc, xm, yc, ym )
+void setqud(
+  std::array<double, nelemn> &area,
+  std::array<std::array<int, nnodes>, nelemn> &node,
+  std::array<double, np> &xc,
+  std::array<std::array<double, nquad>, nelemn> &xm,
+  std::array<double, np> &yc,
+  std::array<std::array<double, nquad>, nelemn> &ym
+) {
+//? setqud() sets midpoint quadrature rule information.
 //  integer nelemn
 //  integer nnodes
 //  integer np
@@ -2837,28 +2789,31 @@ void setlin(
 //  real ( kind = rk8 ) yc(np)
 //  real ( kind = rk8 ) ym(nelemn,nquad)
 //
-//  do it = 1, nelemn
-//    ip1 = node(it,1)
-//    ip2 = node(it,2)
-//    ip3 = node(it,3)
-//    x1 = xc(ip1)
-//    x2 = xc(ip2)
-//    x3 = xc(ip3)
-//    y1 = yc(ip1)
-//    y2 = yc(ip2)
-//    y3 = yc(ip3)
-//    xm(it,1) = 0.5D+00*(x1+x2)
-//    xm(it,2) = 0.5D+00*(x2+x3)
-//    xm(it,3) = 0.5D+00*(x3+x1)
-//    ym(it,1) = 0.5D+00*(y1+y2)
-//    ym(it,2) = 0.5D+00*(y2+y3)
-//    ym(it,3) = 0.5D+00*(y3+y1)
-//    area(it) = 0.5D+00*abs((y1+y2)*(x2-x1)+(y2+y3)*(x3-x2) &
-//      +(y3+y1)*(x1-x3))
-//  end do
-//
-//  return
-//end
+  //do it = 1, nelemn
+  int ip1, ip2, ip3;
+  double x1, x2, x3, y1, y2, y3;
+  for (int it = 0; it < nelemn; ++it) {
+    ip1 = node[it][0];
+    ip2 = node[it][2];
+    ip3 = node[it][3];
+    x1 = xc[ip1-1];
+    x2 = xc[ip2-1];
+    x3 = xc[ip3-1];
+    y1 = yc[ip1-1];
+    y2 = yc[ip2-1];
+    y3 = yc[ip3-1];
+    xm[it][0] = 0.5*(x1+x2);
+    xm[it][1] = 0.5*(x2+x3);
+    xm[it][2] = 0.5*(x3+x1);
+    ym[it][0] = 0.5*(y1+y2);
+    ym[it][1] = 0.5*(y2+y3);
+    ym[it][2] = 0.5*(y3+y1);
+    area[it] = 0.5*std::abs(
+      (y1+y2)*(x2-x1)+(y2+y3)*(x3-x2)
+      +(y3+y1)*(x1-x3)
+    );
+  }
+}
 
 //******************************************************
 void setxy(
@@ -2901,63 +2856,37 @@ void setxy(
   }
 }
 
-//function ubdry ( y, para )
-//
 //******************************************************
-//!
-//!! ubdry() sets the parabolic inflow in terms of the value of the parameter.
-//!
-//!  Licensing:
-//!
-//!    This code is distributed under the MIT license.
-//!
-//!  Modified:
-//!
-//!    20 January 2007
-//!
-//!  Author:
-//!
-//!    John Burkardt
-//!
-//!  Parameters:
-//!
-//  implicit none
-//
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
-//
-//  real ( kind = rk8 ) para
-//  real ( kind = rk8 ) ubdry
-//  real ( kind = rk8 ) y
-//
-//  ubdry = 4.0D+00 * para * y * ( 3.0D+00 - y ) / 9.0D+00
-//
-//  return
-//end
+double ubdry (double y, double para) {
+//? ubdry() sets the parabolic inflow in terms of the value of the parameter.
+
+  return 4.0 * para * y * ( 3.0 - y ) / 9.0;
+}
+
 //subroutine uval ( g, indx, iquad, it, nelemn, neqn, nnodes, node, np, nquad, &
 //  para, phi, un, unx, uny, yc )
 //
 //******************************************************
-//!
-//!! uval() evaluates the velocities at a given point in a particular triangle.
-//!
-//!  Licensing:
-//!
-//!    This code is distributed under the MIT license.
-//!
-//!  Modified:
-//!
-//!    20 January 2007
-//!
-//!  Author:
-//!
-//!    John Burkardt
-//!
-//!  Parameters:
-//!
-//  implicit none
-//
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
-//
+void uval(
+    std::array<double, maxeqn> &g,
+    std::array<std::array<int, 2>, np> &indx,
+    int iquad,
+    int it,
+    int neqn,
+    std::array<std::array<int, nnodes>, nelemn> &node,
+    double para,
+    std::array<
+      std::array<
+        std::array<std::array<double, 3>, nnodes>,
+        nquad
+      >, nelemn
+    > &phi,
+    std::array<double, 2> &un,    // ← tamaño fijo 2
+    std::array<double, 2> &unx,   // ← tamaño fijo 2
+    std::array<double, 2> &uny,   // ← tamaño fijo 2
+    std::array<double, np> &yc
+) {
+//? uval() evaluates the velocities at a given point in a particular triangle.
 //  integer nelemn
 //  integer neqn
 //  integer nnodes
@@ -2984,40 +2913,45 @@ void setxy(
 //  real ( kind = rk8 ) unx(2)
 //  real ( kind = rk8 ) uny(2)
 //  real ( kind = rk8 ) yc(np)
-//
-//  un(1:2) = 0.0D+00
-//  uny(1:2) = 0.0D+00
-//  unx(1:2) = 0.0D+00
-//
-//  do iq = 1, nnodes
-//
-//    ip = node(it,iq)
-//    bb = phi(it,iquad,iq,1)
-//    bx = phi(it,iquad,iq,2)
-//    by = phi(it,iquad,iq,3)
-//
-//    do iuk = 1, 2
-//
-//      iun = indx(ip,iuk)
-//
-//      if ( 0 < iun ) then
-//        un(iuk) = un(iuk) + bb * g(iun)
-//        unx(iuk) = unx(iuk) + bx * g(iun)
-//        uny(iuk) = uny(iuk) + by * g(iun)
-//      else if ( iun < 0 ) then
-//        ip = node(it,iq)
-//        ubc = ubdry(yc(ip),para)
-//        un(iuk) = un(iuk) + bb * ubc
-//        unx(iuk) = unx(iuk) + bx * ubc
-//        uny(iuk) = uny(iuk) + by * ubc
-//      end if
-//
-//    end do
-//
-//  end do
-//
-//  return
-//end
+
+  int ip;
+  int iun;
+  double bb;
+  double bx;
+  double by;
+  double ubc;
+
+  un[0] = 0.0; un[1] = 0.0;
+  uny[0] = 0.0; uny[1] = 0.0;
+  unx[0] = 0.0; unx[1] = 0.0;
+
+  //do iq = 1, nnodes
+  for (int iq = 0; iq < nnodes; ++iq) {
+
+    ip = node[it][iq];
+    bb = phi[it][iquad][iq][1];
+    bx = phi[it][iquad][iq][2];
+    by = phi[it][iquad][iq][3];
+
+    for (int iuk = 0; iuk < 2; ++iuk) {
+
+      iun = indx[ip][iuk]-1;
+
+      if ( 0 < iun ) {
+        un[iuk] += bb * g[iun];
+        unx[iuk] += bx * g[iun];
+        uny[iuk] += by * g[iun];
+      } else if ( iun < 0 ) {
+        ip = node[it][iq]-1;
+        ubc = ubdry(yc[ip],para);
+        un[iuk] += bb * ubc;
+        unx[iuk] += bx * ubc;
+        uny[iuk] += by * ubc;
+      }
+    }
+  }
+}
+
 //subroutine uv_plot3d (f,indx,insc,ivunit,long,mx,my, &
 //  nelemn,neqn,nnodes,node,np,para,press,reynld,yc)
 //
@@ -3067,7 +3001,7 @@ void setxy(
 //!
 //  implicit none
 //
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
+//  integer, parameter :: rk8 = kind ( 1.0 )
 //
 //  integer nelemn
 //  integer neqn
@@ -3102,10 +3036,10 @@ void setxy(
 //
 //  iset = iset+1
 //
-//  dval = 1.0D+00
-//  fsmach = 1.0D+00
-//  alpha = 1.0D+00
-//  time = 1.0D+00
+//  dval = 1.0
+//  fsmach = 1.0
+//  alpha = 1.0
+//  time = 1.0
 //
 //  call pval (f,insc,long,mx,my,nelemn,neqn,nnodes,node,np,press)
 //!
@@ -3133,7 +3067,7 @@ void setxy(
 //          else if ( ii == 3 ) then
 //            k = indx(ip,2)
 //            if (k == 0) then
-//              vval = 0.0D+00
+//              vval = 0.0
 //            else
 //              vval = f(k)
 //            end if
@@ -3159,7 +3093,7 @@ void setxy(
 //            ip = (i-1)*my+j
 //            k = indx(ip,1)
 //            if (k == 0) then
-//              uval = 0.0D+00
+//              uval = 0.0
 //            else if (k < 0) then
 //              uval = ubdry(yc(i),para)
 //            else
@@ -3169,7 +3103,7 @@ void setxy(
 //          else if ( ii == 3 ) then
 //            k = indx(ip,2)
 //            if (k == 0) then
-//              vval = 0.0D+00
+//              vval = 0.0
 //            else
 //              vval = f(k)
 //            end if
@@ -3208,7 +3142,7 @@ void setxy(
 //!
 //  implicit none
 //
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
+//  integer, parameter :: rk8 = kind ( 1.0 )
 //
 //  integer neqn
 //  integer np
@@ -3228,7 +3162,7 @@ void setxy(
 //
 //    k = indx(ip,1)
 //    if ( k == 0 ) then
-//      uval = 0.0D+00
+//      uval = 0.0
 //    else if ( k < 0 ) then
 //      uval = ubdry ( yc(ip), para )
 //    else
@@ -3237,7 +3171,7 @@ void setxy(
 //
 //    k = indx(ip,2)
 //    if ( k == 0 ) then
-//      vval = 0.0D+00
+//      vval = 0.0
 //    else
 //      vval = f(k)
 //    end if
@@ -3281,7 +3215,7 @@ void setxy(
 //!
 //  implicit none
 //
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
+//  integer, parameter :: rk8 = kind ( 1.0 )
 //
 //  integer np
 //
@@ -3369,7 +3303,7 @@ void setxy(
 //!
 //  implicit none
 //
-//  integer, parameter :: rk8 = kind ( 1.0D+00 )
+//  integer, parameter :: rk8 = kind ( 1.0 )
 //
 //  integer np
 //
