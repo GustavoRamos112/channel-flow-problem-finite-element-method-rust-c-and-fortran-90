@@ -367,7 +367,7 @@ program main
   filex = 'xy.txt'
   iounit = 2
   ivunit = 4
-  iwrite = 2
+  iwrite = 10
   ixunit = 3
   maxnew = 10
   maxsec = 8
