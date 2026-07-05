@@ -179,9 +179,7 @@ fn main() {
   println!(" ");
   println!("Solve Navier Stokes problem with parameter = {}", para);
   println!("for profile at x = {}", xc[nodex0]);
-  for i in 0..neqn {
-    g[i] = 1.0;
-  }
+  g.fill(1.0);
 
   nstoke(
     &mut a,
@@ -196,7 +194,6 @@ fn main() {
     neqn,
     nlband,
     &node,
-    nrow,
     &mut numnew,
     para,
     &phi,
@@ -244,10 +241,8 @@ fn main() {
   }
 
   //?  Destroy information about true solution
-  for i in 0..neqn {
-    f[i] = 0.0;
-    g[i] = 0.0;
-  }
+  f.fill(0.0);
+  g.fill(0.0);
   //?  Secant iteration loop
   aold = 0.0;
   rjpold = 0.0;
@@ -261,9 +256,7 @@ fn main() {
     println!(" ");
     println!("Solving Navier Stokes problem for parameter = {}", anew);
     //?  Use solution F at previous value of parameter for starting point.
-    for i in 0..neqn {
-      g[i] = f[i];
-    }
+    g.copy_from_slice(&f);
     para = anew;
 
     nstoke(
@@ -279,7 +272,6 @@ fn main() {
       neqn,
       nlband,
       &node,
-      nrow,
       &mut numnew,
       para,
       &phi,
@@ -316,7 +308,6 @@ fn main() {
       neqn,
       nlband,
       &mut node,
-      nrow,
       para,
       abound,
       &mut phi,
@@ -790,7 +781,6 @@ fn linsys(
   neqn: usize,
   nlband: usize,
   node: &[Vec<usize>],
-  nrow: usize,
   para1: f64,
   para2: f64,
   phi: &[Vec<Vec<Vec<f64>>>],
@@ -831,14 +821,10 @@ fn linsys(
   let mut ar: f64;
   let mut uu: f64;
   let visc: f64 = 1.0 / reynld;
-  for j in 0..neqn {
-    f[j] = 0.0;
-  }
+  f.fill(0.0);
 
-  for k in 0..nrow {
-    for j in 0..neqn {
-      a[k][j] = 0.0;
-    }
+  for row in a.iter_mut() {
+    row.fill(0.0);
   }
   //?  For each element,
   for it in 0..NELEMN {
@@ -978,7 +964,6 @@ fn nstoke(
   neqn: usize,
   nlband: usize,
   node: &[Vec<usize>],
-  nrow: usize,
   numnew: &mut usize,
   para: f64,
   phi: &[Vec<Vec<Vec<f64>>>],
@@ -994,22 +979,18 @@ fn nstoke(
     *numnew += 1;
 
     linsys(
-      a, area, f, g, indx, insc, ipivot, neqn, nlband, node, nrow, para, para, phi, psi,
+      a, area, f, g, indx, insc, ipivot, neqn, nlband, node, para, para, phi, psi,
       reynld, yc,
     );
     //? Check for convergence
-    for i in 0..neqn {
-      g[i] = g[i] - f[i];
-    }
+    g.iter_mut().zip(f.iter()).for_each(|(a, b)| *a -= *b);
     let diff = g[idamax(neqn, g, 1)].abs();
 
     if 1 <= iwrite {
       println!("NSTOKE iteration {} Mnorm = {}", iter + 1, diff);
     }
 
-    for i in 0..neqn {
-      g[i] = f[i];
-    }
+    g.copy_from_slice(&f);
 
     if diff <= tolnew {
       println!("Navier Stokes iteration converged in {} iterations.", iter + 1);
@@ -1362,36 +1343,52 @@ fn setban(
   *nlband = 0;
 
   //do it = 1, nelemn
+  // 1. Usamos una variable LOCAL. Esto es CRÍTICO.
+  // La CPU guardará 'local_max' en sus registros internos, no en la RAM.
+  let mut local_max = *nlband;
+
+  // Asumimos que NNODES * 3 no supera 192. Si es mayor, aumenta el tamaño.
+  // Al ser un array fijo, se guarda en el Stack (caché L1, ultrarrápido).
+  let mut dofs = [0i32; 192];
+
   for it in 0..NELEMN {
-    //do iq = 1, nnodes
+    let mut count = 0;
+
+    // --- FASE 1: RECOLECCIÓN (Muy rápida y secuencial) ---
     for iq in 0..NNODES {
       let ip = node[it][iq];
-      for iuk in 0..3 {
-        let i: i32 = if iuk == 2 {
-          insc[ip]
-        } else {
-          indx[ip][iuk]
-        };
 
-        if i >= 0 {
-          for iqq in 0..NNODES {
-            let ipp = node[it][iqq];
-            for iukk in 0..3 {
-              let j = if iukk == 2 {
-                insc[ipp]
-              } else {
-                indx[ipp][iukk]
-              };
-              if j > i {
-                let diff = (j - i) as usize;
-                *nlband = (*nlband).max(diff);
-              }
-            }
-          }
+      // Desenrollamos el bucle de 3 a mano para evitar el "if iuk == 2"
+      let i0 = indx[ip][0];
+      if i0 >= 0 { dofs[count] = i0; count += 1; }
+
+      let i1 = indx[ip][1];
+      if i1 >= 0 { dofs[count] = i1; count += 1; }
+
+      let i2 = insc[ip];
+      if i2 >= 0 { dofs[count] = i2; count += 1; }
+    }
+
+    // --- FASE 2: COMPARACIÓN (Sobre datos locales en caché L1) ---
+    // Empezamos en 'a+1' para hacer SOLO la mitad de las comparaciones (Simetría)
+    for a in 0..count {
+      let i = dofs[a];
+      for b in (a + 1)..count {
+        let j = dofs[b];
+
+        // Calculamos la diferencia absoluta.
+        // Usar .abs() es más rápido que un "if j > i" porque evita una rama (branch).
+        let diff = (j - i).abs() as usize;
+
+        if diff > local_max {
+          local_max = diff;
         }
       }
     }
   }
+
+  // 2. Solo escribimos en la memoria RAM UNA VEZ al terminar todo.
+  *nlband = local_max;
 
   *nband = *nlband + *nlband + 1;
   *nrow = *nlband + *nlband + *nlband + 1;
@@ -1651,13 +1648,20 @@ fn setlin(
     itemp
   };
 
-  for i in 0..MY {
-    let ip = if *_long {
-      *nodex0 + i
-    } else {
-      *nodex0 + MX * i
-    };
-    iline[i] = indx[ip][0];
+  let start_idx = *nodex0;
+
+  if *_long {
+    // --- CASO 1: Acceso secuencial (Stride de 1) ---
+    // El compilador verá esto y probablemente lo convierta en una copia vectorizada (SIMD)
+    for i in 0..MY {
+        iline[i] = indx[start_idx + i][0];
+    }
+  } else {
+    // --- CASO 2: Acceso saltado (Stride de MX) ---
+    // El compilador optimizará el cálculo de la dirección de memoria
+    for i in 0..MY {
+        iline[i] = indx[start_idx + MX * i][0];
+    }
   }
 
   if 1 <= iwrite {
@@ -1763,12 +1767,9 @@ fn uval(
 ) {
   //? uval() evaluates the velocities at a given point in a //particular triangle.
 
-  un[0] = 0.0;
-  un[1] = 0.0;
-  uny[0] = 0.0;
-  uny[1] = 0.0;
-  unx[0] = 0.0;
-  unx[1] = 0.0;
+  un[0] = 0.0; un[1] = 0.0;
+  uny[0] = 0.0; uny[1] = 0.0;
+  unx[0] = 0.0; unx[1] = 0.0;
 
   for iq in 0..NNODES {
     let ip = node[it][iq];
