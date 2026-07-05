@@ -1,5 +1,7 @@
 use chrono::Local;
 use chrono::Datelike;
+use std::fs::OpenOptions;
+use std::io::Write;
 
 //******************************************************
 //? Constantes
@@ -385,6 +387,13 @@ fn main() {
   timestamp();
   let duracion = inicio.elapsed();
   println!("Tiempo transcurrido: {:?}", duracion);
+  let mut file = OpenOptions::new()
+    .create(true)
+    .append(true)
+    .open("times.txt")
+    .unwrap();
+  write!(file, "{}\n", duracion.as_secs_f64()).unwrap();
+  file.flush().unwrap();
 }
 //******************************************************
 fn bsp(
