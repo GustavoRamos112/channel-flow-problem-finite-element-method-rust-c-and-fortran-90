@@ -5,3 +5,6 @@ edition = "2024"
 
 [dependencies]
 chrono = "0.4.45"
+
+[formatting]
+indent_string = "  " # Explicitly sets 2 spaces
