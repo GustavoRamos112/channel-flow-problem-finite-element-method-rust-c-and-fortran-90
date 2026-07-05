@@ -4,3 +4,7 @@ build
 .idea
 *.lock
 target
+diferencias_rust_fortran.md
+*.gp
+*.png
+*.dat
