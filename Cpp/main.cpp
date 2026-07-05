@@ -1726,7 +1726,7 @@ void linsys(
   std::array<double, 2> uny;
   double ar;
   double uu;
-  int ioff = nlband + nlband + 1;
+  int ioff = nlband + nlband;
   double visc = 1.0 / reynld;
   for (int j = 0; j < neqn; j++) {
     f[j] = 0.0;
@@ -1746,100 +1746,100 @@ void linsys(
       uval(g, indx, iquad, it, neqn, node, para1, phi, un, unx, uny, yc);
       //!  For each basis function,
       for (int iq = 0; iq < nnodes; ++iq) {
-        ip = node[it][iq];
+        ip = node[it][iq]-1;
         bb = phi[it][iquad][iq][0];
         bx = phi[it][iquad][iq][1];
         by = phi[it][iquad][iq][2];
         bbl = psi[it][iquad][iq];
-        ihor = indx[ip-1][0];
-        iver = indx[ip-1][1];
-        iprs = insc[ip-1];
+        ihor = indx[ip-1][0]-1;
+        iver = indx[ip-1][1]-1;
+        iprs = insc[ip-1]-1;
 
-        if ( 0 < ihor ) {
-          f[ihor-1] += ar*bb*(un[0]*unx[0]+un[1]*uny[0]);
+        if ( 0 < ihor+1 ) {
+          f[ihor] += ar*bb*(un[0]*unx[0]+un[1]*uny[0]);
         }
 
-        if ( 0 < iver ) {
-          f[iver-1] += ar*bb*(un[0]*unx[1]+un[1]*uny[1]);
+        if ( 0 < iver+1 ) {
+          f[iver] += ar*bb*(un[0]*unx[1]+un[1]*uny[1]);
         }
         //!  For another basis function,
         //do iqq = 1, nnodes
         for (int iqq = 0; iqq < nnodes; ++iqq) {
-          ipp = node[it][iqq];
+          ipp = node[it][iqq]-1;
           bbb = phi[it][iquad][iqq][0];
           bbx = phi[it][iquad][iqq][1];
           bby = phi[it][iquad][iqq][2];
           bbbl = psi[it][iquad][iqq];
-          ju = indx[ipp-1][0];
-          jv = indx[ipp-1][1];
-          jp = insc[ipp-1];
+          ju = indx[ipp-1][0]-1;
+          jv = indx[ipp-1][1]-1;
+          jp = insc[ipp-1]-1;
           //!  Horizontal velocity variable
-          if ( 0 < ju ) {
-            if ( 0 < ihor ) {
+          if ( 0 < ju+1 ) {
+            if ( 0 < ihor+1 ) {
               iuse = ihor-ju+ioff;
-              a[iuse-1][ju-1] += ar*(
+              a[iuse][ju] += ar*(
                 visc*(by*bby+bx*bbx)
                 + bb*(bbb*unx[0]+bbx*un[0]+bby*un[1])
               );
             }
 
-            if ( 0 < iver ) {
+            if ( 0 < iver+1 ) {
               iuse = iver-ju+ioff;
-              a[iuse-1][ju-1] += ar*bb*bbb*unx[1];
+              a[iuse][ju] += ar*bb*bbb*unx[1];
             }
 
-            if ( 0 < iprs ) {
+            if ( 0 < iprs+1 ) {
               iuse = iprs-ju+ioff;
-              a[iuse-1][ju-1] += ar*bbx*bbl;
+              a[iuse][ju] += ar*bbx*bbl;
             }
 
-          } else if ( ju < 0 ) {
-            uu = ubdry(yc[ipp-1],para2);
-            if ( 0 < ihor ) {
-              f[ihor-1] -= ar*uu*(
+          } else if ( ju+1 < 0 ) {
+            uu = ubdry(yc[ipp],para2);
+            if ( 0 < ihor+1 ) {
+              f[ihor] -= ar*uu*(
                 visc*(by*bby+bx*bbx) +
                 bb*(bbb*unx[0]+bbx*un[0]+bby*un[1])
               );
             }
 
-            if ( 0 < iver ) {
-              f[iver-1] -= ar*uu*bb*bbb*unx[1];
+            if ( 0 < iver+1 ) {
+              f[iver] -= ar*uu*bb*bbb*unx[1];
             }
 
-            if ( 0 < iprs ) {
-              f[iprs-1] -= ar*uu*bbx*bbl;
+            if ( 0 < iprs+1 ) {
+              f[iprs] -= ar*uu*bbx*bbl;
             }
           }
           //!  Vertical velocity variable
-          if ( 0 < jv ){
+          if ( 0 < jv+1 ){
 
-            if ( 0 < ihor ) {
+            if ( 0 < ihor+1 ) {
               iuse = ihor-jv+ioff;
-              a[iuse-1][jv-1] += ar*bb*bbb*uny[0];
+              a[iuse][jv] += ar*bb*bbb*uny[0];
             }
 
-            if ( 0 < iver ) {
+            if ( 0 < iver+1 ) {
               iuse = iver-jv+ioff;
-              a[iuse-1][jv-1] += ar*(
+              a[iuse][jv] += ar*(
                 visc*(by*bby+bx*bbx) +
                 bb*(bbb*uny[1]+bby*un[1]+bbx*un[0])
               );
             }
 
-            if ( 0 < iprs ) {
+            if ( 0 < iprs+1 ) {
               iuse = iprs-jv+ioff;
-              a[iuse-1][jv-1] += ar*bby*bbl;
+              a[iuse][jv] += ar*bby*bbl;
             }
           }
           //!  Pressure variable
-          if ( 0 < jp ) {
-            if ( 0 < ihor ) {
+          if ( 0 < jp+1 ) {
+            if ( 0 < ihor+1 ) {
               iuse = ihor-jp+ioff;
-              a[iuse-1][jp-1] -= ar*bx*bbbl;
+              a[iuse][jp] -= ar*bx*bbbl;
             }
-            if ( 0 < iver ) {
+            if ( 0 < iver+1 ) {
               iuse = iver-jp+ioff;
-              a[iuse-1][jp-1] -= ar*by*bbbl;
+              a[iuse][jp] -= ar*by*bbbl;
             }
           }
         }
@@ -1848,13 +1848,13 @@ void linsys(
   }
   //!  To avoid singularity of the pressure system, the last pressure
   //!  is simply assigned a value of 0.
-  f[neqn] = 0.0;
+  f[neqn-1] = 0.0;
   //do j = neqn-nlband, neqn-1
   for (int j = neqn-nlband; j < neqn; ++j) {
     i = neqn-j+ioff;
-    a[i-1][j-1] = 0.0;
+    a[i][j] = 0.0;
   }
-  a[ioff][neqn] = 1.0;
+  a[ioff][neqn-1] = 1.0;
   //!  Factor the matrix
   //call dgbfa ( a, maxrow, neqn, nlband, nlband, ipivot, info )
 
