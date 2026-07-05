@@ -122,9 +122,10 @@ fn main() {
   println!("NX = {}", NX);
   println!("NY = {}", NY);
   println!("Number of elements = {}", NELEMN);
-  println!("Reynolds number = {}", reynld);
-  println!("Secant tolerance = {}", tolsec);
-  println!("Newton tolerance = {}", tolnew);
+  println!("Reynolds number =  {}.", reynld);
+  let fmt_sci = |v: f64| format!(" 1.E{:+03}", v.abs().log10().floor() as i32);
+  println!("Secant tolerance = {}", fmt_sci(tolsec));
+  println!("Newton tolerance = {}", fmt_sci(tolnew));
   println!("");
   //?  SETGRD constructs grid, numbers unknowns, calculates areas,
   //?  and points for midpoint quadrature rule.
@@ -431,73 +432,70 @@ fn dgbfa(
   let m = ml + mu + 1;
   *info = 0;
 
-  let j0 = mu + 2;
-  let j1 = std::cmp::min(n, m) - 1;
-
-  if j0 <= j1 {
-    for jz in j0..=j1 {
-      let i0 = if m + 1 > jz { m + 1 - jz } else { 1 };
-      if i0 <= ml {
-        for i in i0..=ml {
-          abd[i - 1][jz - 1] = 0.0;
-        }
+  // Zero-initialize the upper-right area outside the band
+  let j_end = std::cmp::min(n, m);
+  if mu + 2 < j_end {
+    for col in (mu + 1)..(j_end - 1) {
+      let i0 = m - col;
+      for row in (i0 - 1)..ml {
+        abd[row][col] = 0.0;
       }
     }
   }
 
-  let mut jz = j1;
+  let mut jz = j_end.saturating_sub(2);
   let mut ju = 0;
 
-  for k in 1..=n - 1 {
+  for k in 0..n - 1 {
     jz += 1;
-    if jz <= n {
-      for i in 0..ml {
-        abd[i][jz - 1] = 0.0;
+    if jz < n {
+      for row in 0..ml {
+        abd[row][jz] = 0.0;
       }
     }
 
-    let lm = std::cmp::min(ml, n - k);
+    let lm = std::cmp::min(ml, n - 1 - k);
     let mut l = m;
-    let mut dmax = abd[m - 1][k - 1].abs();
+    let mut dmax = abd[m - 1][k].abs();
     for i in 1..=lm {
-      let abs_val = abd[m - 1 + i][k - 1].abs();
+      let abs_val = abd[m - 1 + i][k].abs();
       if dmax < abs_val {
         dmax = abs_val;
         l = m + i;
       }
     }
-    ipvt[k - 1] = (l + k - m) as i32;
+    ipvt[k] = (l + k + 1 - m) as i32;
 
-    if abd[l - 1][k - 1] == 0.0 {
-      *info = k;
+    if abd[l - 1][k] == 0.0 {
+      *info = k + 1;
     } else {
       if l != m {
-        let t = abd[l - 1][k - 1];
-        abd[l - 1][k - 1] = abd[m - 1][k - 1];
-        abd[m - 1][k - 1] = t;
+        let t = abd[l - 1][k];
+        abd[l - 1][k] = abd[m - 1][k];
+        abd[m - 1][k] = t;
       }
 
-      let t = -1.0 / abd[m - 1][k - 1];
+      let t = -1.0 / abd[m - 1][k];
       for i in 0..lm {
-        abd[m + i][k - 1] *= t;
+        abd[m + i][k] *= t;
       }
 
-      ju = std::cmp::max(ju, mu + ipvt[k - 1] as usize);
+      ju = std::cmp::max(ju, mu + ipvt[k] as usize);
       if ju > n {
         ju = n;
       }
       let mut mm = m;
       let mut ll = l;
-      for j in k + 1..=ju {
+      for j in k + 1..ju {
         ll -= 1;
         mm -= 1;
-        let t = abd[ll - 1][j - 1];
+        let t = abd[ll - 1][j];
         if ll != mm {
-          abd[ll - 1][j - 1] = abd[mm - 1][j - 1];
-          abd[mm - 1][j - 1] = t;
+          abd[ll - 1][j] = abd[mm - 1][j];
+          abd[mm - 1][j] = t;
         }
         for i in 0..lm {
-          abd[mm + i][j - 1] += t * abd[m + i][k - 1];
+          abd[mm + i][j] += t * abd[m + i][k];
         }
       }
     }
@@ -590,171 +588,7 @@ fn dgbsl(
     }
   }
 }
-//subroutine dscal ( n, da, dx, incx )
-//
-//******************************************************
-//?! dscal() scales a vector by a constant.
-//?     uses unrolled loops for increment equal to one.
-//?     jack dongarra, linpack, 3/11/78.
-//?     modified 3/93 to return if incx  <=  0.
-//?     modified 12/3/93, array(1) declarations changed to array(*)
-//?  Parameters:
-//  integer, parameter :: rk8 = kind ( 1.0 )
-//
-//  real ( kind = rk8 ) da,dx(*)
-//  integer i,incx,m,n,nincx
-//  if (  n <= 0 .or. incx <= 0 )return
-//  if ( incx == 1)go to 20
-//?        code for increment not equal to 1
-//  nincx = n*incx
-//  do i = 1,nincx,incx
-//    dx(i) = da*dx(i)
-//  end do
-//  return
-//?        code for increment equal to 1
-//?        clean-up loop
-//   20 continue
-//
-//  m = mod(n,5)
-//  if (  m  ==  0 ) go to 40
-//  dx(1:m) = da*dx(1:m)
-//  if (  n  <  5 ) return
-//
-//40 continue
-//
-//  do i = m+1,n,5
-//    dx(i) = da*dx(i)
-//    dx(i + 1) = da*dx(i + 1)
-//    dx(i + 2) = da*dx(i + 2)
-//    dx(i + 3) = da*dx(i + 3)
-//    dx(i + 4) = da*dx(i + 4)
-//  end do
-//
-//  return
-//end
-//subroutine gdump (f,indx,insc,iounit,isotri,long,nelemn,neqn, &
-//  nnodes,node,np,npara,nx,ny,para,reynld,rjpnew,xc,yc)
-//
-//******************************************************
-//?! gdump() writes information to a file.
-//?  Discussion:
-//?    The information can be used to create
-//?    graphics images.  In order to keep things simple, exactly one
-//?    value, real or integer, is written per record.
-//?  Licensing:
-//?    This code is distributed under the MIT license.
-//?  Modified:
-//?    20 January 2007
-//?  Author:
-//?    John Burkardt
-//?  Parameters:
-//?    Input, integer NPARA, the number of parameters.  Fixed at 1
-//?    for now.
-//?    Input, real ( kind = rk8 ) PARA(MAXPAR), the parameters.
-//  integer, parameter :: rk8 = kind ( 1.0 )
-//
-//  integer nelemn
-//  integer neqn
-//  integer nnodes
-//  integer np
-//
-//  real ( kind = rk8 ) f(neqn)
-//  real ( kind = rk8 ) fval
-//  integer i
-//  integer indx(np,2)
-//  integer insc(np)
-//  integer iounit
-//  integer, save :: iset = 0
-//  integer isotri(nelemn)
-//  integer j
-//  logical long
-//  integer node(nelemn,nnodes)
-//  integer npara
-//  integer nx
-//  integer ny
-//  real ( kind = rk8 ) para
-//  real ( kind = rk8 ) reynld
-//  real ( kind = rk8 ) rjpnew
-//  real ( kind = rk8 ) ubdry
-//  real ( kind = rk8 ) xc(np)
-//  real ( kind = rk8 ) yc(np)
-//
-//  iset = iset+1
-//
-//  write(iounit,*)long
-//  write (iounit,*) nelemn
-//  write (iounit,*) np
-//  write (iounit,*) npara
-//  write (iounit,*) nx
-//  write (iounit,*) ny
-//?  Pressures
-//  do i = 1, np
-//    j = insc(i)
-//    if (j <= 0) then
-//      fval = 0.0
-//    else
-//      fval = f(j)
-//    end if
-//    write (iounit,*) fval
-//  end do
-//?  Horizontal velocities, U
-//  do i = 1, np
-//    j = indx(i,1)
-//    if (j == 0) then
-//      fval = 0.0
-//    else if (j < 0) then
-//      fval = ubdry(yc(i),para)
-//    else
-//      fval = f(j)
-//    end if
-//    write (iounit,*) fval
-//  end do
-//?  Vertical velocities, V
-//  do i = 1, np
-//    j = indx(i,2)
-//    if (j <= 0) then
-//      fval = 0.0
-//    else
-//      fval = f(j)
-//    end if
-//    write (iounit,*) fval
-//  end do
-//
-//  do i = 1, np
-//    write (iounit,*) indx(i,1)
-//    write (iounit,*) indx(i,2)
-//  end do
-//
-//  do i = 1, np
-//    write (iounit,*) insc(i)
-//  end do
-//
-//  do i = 1, nelemn
-//    write (iounit,*) isotri(i)
-//  end do
-//
-//  do i = 1, nelemn
-//    do j = 1, 6
-//      write (iounit,*) node(i,j)
-//    end do
-//  end do
-//
-//  write (iounit,*) para
-//  write (iounit,*) reynld
-//  write (iounit,*) rjpnew
-//
-//  do i = 1, np
-//    write (iounit,*) xc(i)
-//  end do
-//
-//  do i = 1, np
-//    write (iounit,*) yc(i)
-//  end do
-//
-//  println!("GDUMP wrote data set ',iset,' to file.")
-//
-//  return
-//end
+
 //******************************************************
 fn getg(f: &[f64], iline: &[i32], my: usize, _neqn: usize, u: &mut [f64]) {
   for j in 0..my {
@@ -1755,7 +1589,7 @@ fn setgrd(
     //do i = 1,np
     for i in 0..NP {
       //write (*,'(2xi6,2x,i6,2x,i6,2x,i6)') i,indx(i,1:2),insc(i)
-      let dsp = |v: i32| if v >= 0 { v + 1 } else if v == -2 { 0 } else { v };
+      let dsp = |v: i32| if v >= 0 { v + 1 } else if v == -2 { -1 } else { 0 };
       println!(
         "{:6} {:6} {:6} {:6}",
         i + 1,
@@ -1822,7 +1656,7 @@ fn setlin(
     println!("SETLIN: unknown numbers along line:");
     println!(" ");
     for i in 0..MY {
-      std::print!("{:>5}", if iline[i] >= 0 { iline[i] + 1 } else { 0 });
+      std::print!("{:>5}", if iline[i] >= 0 { iline[i] + 1 } else if iline[i] == -2 { -1 } else { 0 });
       if (i + 1) % 15 == 0 && (i + 1) < MY {
         std::println!("");
       }
