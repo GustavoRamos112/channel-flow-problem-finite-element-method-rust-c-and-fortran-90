@@ -38,13 +38,13 @@ if __name__ == "__main__":
   _repetitions = 10
 
   #! fortran
-  _dir = "fortran"
-  _command: list[str] = ["build/bump.exe"]
+  _dir = "Fortran90"
+  _command: list[str] = ["build/main.exe"]
 
-  archivo_times: str = "times.txt"
-  dir_times: str = f"{_dir}/{archivo_times}"
+  #archivo_times: str = "times.txt"
+  #dir_times: str = f"{_dir}/{archivo_times}"
 
-  check_times_file(dir_times)
+  #check_times_file(dir_times)
 
   tiempos_f90, media_f90 = medir_tiempo(
     directorio=_dir, comando=_command,
@@ -52,7 +52,7 @@ if __name__ == "__main__":
   )
 
   #! C++
-  _dir = "c++"
+  _dir = "Cpp"
   _command: list[str] = ["build/main.exe"]
 
   archivo_times: str = "times.txt"
