@@ -8,3 +8,5 @@ target
 *.png
 *.dat
 prub
+.ruff_cache
+data
