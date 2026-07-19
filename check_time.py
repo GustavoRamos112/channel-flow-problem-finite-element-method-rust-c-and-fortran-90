@@ -6,6 +6,18 @@ import os
 from tabulate import tabulate
 from tqdm import tqdm
 
+def compilar(dir: str, comando: str, rust = False) -> None:
+  print(f"{dir}: ", end="")
+  original_dir: str = os.getcwd()
+  start: float = time.perf_counter()
+  os.chdir(dir)
+  if not os.path.exists("build") and not rust:
+    os.mkdir("build")
+  subprocess.run(comando, shell=True, stderr=subprocess.DEVNULL)
+  os.chdir(original_dir)
+  end: float = time.perf_counter()
+  print(end - start)
+
 def check_times_file (dir_times: str) -> None:
   if os.path.exists(dir_times):
     os.remove(dir_times)
@@ -46,45 +58,19 @@ def medir_tiempo(directorio: str, comando: list, repeticiones: int, fortran: boo
 
 if __name__ == "__main__":
   #! Bandera para compilar
-  compilar = False
+  w_compilar = True
 
-  if compilar:
+  if w_compilar:
     print("Compilando...")
-    original_dir: str = os.getcwd()
-    
-    print("Cpp: ", end="")
-    start: float = time.perf_counter()
-    os.chdir("Cpp")
-    if not os.path.exists("build"):
-      os.mkdir("build")
-    subprocess.run("clang++ main.cpp -std=c++23 -O3 -o build\\main.exe", shell=True, stderr=subprocess.DEVNULL)
-    os.chdir(original_dir)
-    end: float = time.perf_counter()
-    print(end - start)
-
-    print("Fortran: ", end="")
-    start: float = time.perf_counter()
-    os.chdir("Fortran90")
-    if not os.path.exists("build"):
-      os.mkdir("build")
-    subprocess.run("flang main.f90 -O3 -o build\\main.exe", shell=True, stderr=subprocess.DEVNULL)
-    os.chdir(original_dir)
-    end: float = time.perf_counter()
-    print(end - start)
-
-    print("Rust: ", end="")
-    start: float = time.perf_counter()
-    os.chdir("Rust")
-    subprocess.run("cargo build --release", shell=True, stderr=subprocess.DEVNULL)
-    os.chdir(original_dir)
-    end: float = time.perf_counter()
-    print(end - start)
+    compilar("Cpp", "clang++ main.cpp -std=c++23 -O3 -o build\\main.exe")
+    compilar("Fortran90", "flang main.f90 -O3 -o build\\main.exe")
+    compilar("Rust", "cargo build --release", rust = True)
 
   _repetitions = 10
 
   #! fortran
   print("fortran")
-  _dir = "fortran90"
+  _dir: str = "fortran90"
   _command: list[str] = ["build/main.exe"]
 
   tiempos_f90, media_f90 = medir_tiempo(
@@ -158,6 +144,7 @@ if __name__ == "__main__":
   print(tabla)
   for i in range(len(tabla)):
     tabla[i].append(f"X{tabla[i][1]/tabla[0][1]:.3}")
+
   print(tabulate(
     tabla,
     headers=["Lenguaje", "Media", "Comparativa"],
