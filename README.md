@@ -337,3 +337,23 @@ Repeticiones:  10
 |    F90     | 0.243896 |     X1.89     |
 +------------+----------+---------------+
 ```
+
+## Licencia
+
+<div align="center">
+
+[![GNU GPLv3 Image](https://www.licen.cc/images/license-logos/licen.cc-mit.png)](https://mit-license.org/)
+
+</div>
+
+<div align="left">
+
+Este proyecto está bajo la Licencia MIT. Permite el uso, copia, modificación, distribución, sublicenciamiento y venta del software de forma gratuita y sin restricciones. El único requisito es incluir el aviso de derechos de autor original y este texto de licencia en todas las copias o partes sustanciales del software. El código se proporciona "tal cual", sin garantías de ningún tipo.
+
+</div>
+
+## Creditos:
+
+Codigo Original den Fortran 90: John Burkardt
+
+Mas detalles sobre funciones especificas o heredadas, revisar `Fortran90/main.f90`.
