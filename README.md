@@ -21,19 +21,21 @@ U \frac{\partial U}{\partial x} +
   \frac{\partial P}{\partial x} - 
   \mu\left(\frac{\partial^2 U}{\partial x^2} + 
   \frac{\partial^2 U}{\partial y^2}\right) = F_1 \\
-
+```
+```math
 U \frac{\partial V}{\partial x} + 
   V \frac{\partial V}{\partial y} + 
   \frac{\partial P}{\partial y} - 
   \mu\left(\frac{\partial^2 V}{\partial x^2} + 
   \frac{\partial^2 V}{\partial y^2}\right) = F_2 \\
-
+```
+```math
 \frac{\partial U}{\partial x} + 
   \frac{\partial V}{\partial y} = 0
 ```
 
 Al reformularse en la forma de elementos finitos, donde $\phi_i$ es la función de base común $i$-ésima para $U$ y $V$, y $\psi_i$ es la función de base $i$-ésima para $P$, estas ecuaciones se convierten en:
-\[
+```math
 \int \left( 
   U \frac{dU}{dx} \phi_i + 
   V \frac{dU}{dy} \phi_i - 
@@ -43,7 +45,8 @@ Al reformularse en la forma de elementos finitos, donde $\phi_i$ es la función 
     \frac{dU}{dy} \frac{d\phi_i}{dy} 
   \right) 
 \right) = \int F_1 \phi_i  \\
-
+```
+```math
 \int \left( 
   U \frac{dV}{dx} \phi_i + 
   V \frac{dV}{dy} \phi_i - 
@@ -53,12 +56,13 @@ Al reformularse en la forma de elementos finitos, donde $\phi_i$ es la función 
     \frac{dV}{dy} \frac{d\phi_i}{dy} 
   \right) 
 \right) = \int F_2 \phi_i  \\
-
+```
+```math
 \int \left( 
   \frac{dU}{dx} \psi_i + 
   \frac{dV}{dx} \psi_i 
 \right) = 0
-\]
+```
 
 ## Código y diferencias con el original
 
