@@ -20,14 +20,14 @@ U \frac{\partial U}{\partial x} +
   V \frac{\partial U}{\partial y} + 
   \frac{\partial P}{\partial x} - 
   \mu\left(\frac{\partial^2 U}{\partial x^2} + 
-  \frac{\partial^2 U}{\partial y^2}\right) = F_1 \\
+  \frac{\partial^2 U}{\partial y^2}\right) = F_1
 ```
 ```math
 U \frac{\partial V}{\partial x} + 
   V \frac{\partial V}{\partial y} + 
   \frac{\partial P}{\partial y} - 
   \mu\left(\frac{\partial^2 V}{\partial x^2} + 
-  \frac{\partial^2 V}{\partial y^2}\right) = F_2 \\
+  \frac{\partial^2 V}{\partial y^2}\right) = F_2
 ```
 ```math
 \frac{\partial U}{\partial x} + 
@@ -44,7 +44,7 @@ Al reformularse en la forma de elementos finitos, donde $\phi_i$ es la función 
     \frac{dU}{dx} \frac{d\phi_i}{dx} + 
     \frac{dU}{dy} \frac{d\phi_i}{dy} 
   \right) 
-\right) = \int F_1 \phi_i  \\
+\right) = \int F_1 \phi_i
 ```
 ```math
 \int \left( 
@@ -55,7 +55,7 @@ Al reformularse en la forma de elementos finitos, donde $\phi_i$ es la función 
     \frac{dV}{dx} \frac{d\phi_i}{dx} + 
     \frac{dV}{dy} \frac{d\phi_i}{dy} 
   \right) 
-\right) = \int F_2 \phi_i  \\
+\right) = \int F_2 \phi_i
 ```
 ```math
 \int \left( 
