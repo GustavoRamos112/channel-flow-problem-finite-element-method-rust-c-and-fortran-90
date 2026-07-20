@@ -15,7 +15,7 @@ Este código intenta ajustar un perfil corriente abajo modificando un parámetro
 Las funciones lineales a trozos sobre triángulos aproximan la presión, y las funciones cuadráticas sobre triángulos aproximan la velocidad.
 
 Esta es la base de elementos finitos de "Taylor-Hood". La formulación en variables primitivas de las ecuaciones de Navier-Stokes involucra la velocidad horizontal $U$, la velocidad vertical $V$ y la presión $P$. Las ecuaciones son:
-$$
+```math
 U \frac{\partial U}{\partial x} + 
   V \frac{\partial U}{\partial y} + 
   \frac{\partial P}{\partial x} - 
@@ -30,7 +30,7 @@ U \frac{\partial V}{\partial x} +
 
 \frac{\partial U}{\partial x} + 
   \frac{\partial V}{\partial y} = 0
-$$
+```
 
 Al reformularse en la forma de elementos finitos, donde $\phi_i$ es la función de base común $i$-ésima para $U$ y $V$, y $\psi_i$ es la función de base $i$-ésima para $P$, estas ecuaciones se convierten en:
 $$
