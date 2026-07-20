@@ -358,6 +358,6 @@ Este proyecto está bajo la Licencia MIT. Permite el uso, copia, modificación, 
 
 ## Creditos:
 
-Codigo Original den Fortran 90: John Burkardt
+Codigo Original de Fortran 90: John Burkardt
 
 Mas detalles sobre funciones especificas o heredadas, revisar `Fortran90/main.f90`.
