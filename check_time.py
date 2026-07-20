@@ -141,7 +141,6 @@ if __name__ == "__main__":
   ]
 
   tabla.sort(key=lambda x: x[1])
-  print(tabla)
   for i in range(len(tabla)):
     tabla[i].append(f"X{tabla[i][1]/tabla[0][1]:.3}")
 
