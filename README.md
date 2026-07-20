@@ -33,7 +33,7 @@ U \frac{\partial V}{\partial x} +
 ```
 
 Al reformularse en la forma de elementos finitos, donde $\phi_i$ es la función de base común $i$-ésima para $U$ y $V$, y $\psi_i$ es la función de base $i$-ésima para $P$, estas ecuaciones se convierten en:
-$$
+\[
 \int \left( 
   U \frac{dU}{dx} \phi_i + 
   V \frac{dU}{dy} \phi_i - 
@@ -58,7 +58,7 @@ $$
   \frac{dU}{dx} \psi_i + 
   \frac{dV}{dx} \psi_i 
 \right) = 0
-$$
+\]
 
 ## Código y diferencias con el original
 
