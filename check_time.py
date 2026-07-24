@@ -9,11 +9,11 @@ from tqdm import tqdm
 class benchmark:
   def __init__(
     self, 
-    lenguajes: dict[str, tuple[str, str]], 
+    lenguajes: dict[str, tuple[str, str, str]], 
     repeticiones: int = 10, 
     archivo_times: str = "times.txt",
     compilar: bool = True) -> None:
-    self.lenguajes: dict[str, tuple[str, str]] = lenguajes
+    self.lenguajes: dict[str, tuple[str, str, str]] = lenguajes
     self.compilar: bool = compilar
     self.repeticiones: int = repeticiones
     self.archivo_times: str = archivo_times
@@ -73,8 +73,9 @@ class benchmark:
 
   def realizar_benchmark(self) -> None:
     tiempos_generales: list[list[float]] = [[] for _ in range(self.repeticiones)]
-    medias = {}
+    medias: dict[str, float] = {}
     i: int = 0
+    dir_times: str = ""
 
     if self.compilar:
       print("Compilando...")
@@ -130,14 +131,14 @@ class benchmark:
       tablefmt="grid")
     )
 
-    tabla = [
-      [key, medias[key]]
+    tabla: list[tuple[str, float, str]] = [
+      (key, medias[key], "X0.00")
       for key in medias.keys()
     ]
 
     tabla.sort(key=lambda x: x[1])
     for i in range(len(tabla)):
-      tabla[i].append(f"X{tabla[i][1]/tabla[0][1]:.3}")
+      tabla[i] = (tabla[i][0], tabla[i][1], f"X{tabla[i][1]/tabla[0][1]:.3}")
 
     print(tabulate(
       tabla,
@@ -154,10 +155,14 @@ if __name__ == "__main__":
   #?    "Ubicacion del ejecutable",
   #?    "Nombre del lenguaje"
   #?  )
-  lenguajes: dict[str, tuple[str, str]] = {
+  lenguajes: dict[str, tuple[str, str, str]] = {
+    #? Directorio
     "Fortran90": (
+      #? comando de compilacion
       "flang main.f90 -O3 -o build/main.exe",
+      #? ubicacion del ejecutable
       "build/main.exe",
+      #? nombre del lenguaje
       "fortran"
     ),
     "Cpp": (
