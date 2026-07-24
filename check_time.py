@@ -12,7 +12,8 @@ class benchmark:
     lenguajes: dict[str, tuple[str, str, str]], 
     repeticiones: int = 10, 
     archivo_times: str = "times.txt",
-    compilar: bool = True) -> None:
+    compilar: bool = True
+  ) -> None:
     self.lenguajes: dict[str, tuple[str, str, str]] = lenguajes
     self.compilar: bool = compilar
     self.repeticiones: int = repeticiones
@@ -179,7 +180,6 @@ if __name__ == "__main__":
 
   check = benchmark(
     lenguajes = lenguajes, 
-    repeticiones = 10, 
-    compilar = True
+    repeticiones = 10
   )
   check.realizar_benchmark()
