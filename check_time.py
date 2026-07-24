@@ -180,6 +180,6 @@ if __name__ == "__main__":
   check = benchmark(
     lenguajes = lenguajes, 
     repeticiones = 10, 
-    compilar = False
+    compilar = True
   )
   check.realizar_benchmark()
